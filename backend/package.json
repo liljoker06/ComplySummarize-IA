@@ -4,16 +4,22 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon server.js",
+    "dev": "nodemon server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
+    "@sequelize/mysql": "^7.0.0-alpha.46",
     "cors": "^2.8.5",
     "dotenv": "^17.0.0",
     "express": "^5.1.0",
-    "multer": "^2.0.1"
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.1",
+    "nodemon": "^3.1.10",
+    "sequelize": "^6.37.7"
   }
 }
