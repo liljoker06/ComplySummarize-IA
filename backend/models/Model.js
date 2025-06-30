@@ -29,44 +29,12 @@ const Model = sequelize.define('Model', {
     }
   },
   provider: {
-    type: DataTypes.ENUM('openai', 'anthropic', 'google', 'ollama', 'huggingface'),
+    type: DataTypes.ENUM('openai', 'anthropic', 'google', 'ollama', 'huggingface', 'mistral'),
     allowNull: false,
-  },
-  modelVersion: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    validate: {
-      notEmpty: true,
-      len: [1, 50]
-    }
   },
   description: {
     type: DataTypes.TEXT,
     allowNull: true,
-  },
-  capabilities: {
-    type: DataTypes.JSON,
-    allowNull: true,
-    comment: 'Capacités du modèle (summarization, qa, analysis, etc.)'
-  },
-  pricing: {
-    type: DataTypes.JSON,
-    allowNull: true,
-    comment: 'Informations de tarification (input/output tokens)'
-  },
-  maxTokens: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    validate: {
-      min: 1000
-    }
-  },
-  contextWindow: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    validate: {
-      min: 1000
-    }
   },
   isActive: {
     type: DataTypes.BOOLEAN,
@@ -75,18 +43,6 @@ const Model = sequelize.define('Model', {
   isDefault: {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
-  },
-  apiEndpoint: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    validate: {
-      isUrl: true
-    }
-  },
-  configuration: {
-    type: DataTypes.JSON,
-    allowNull: true,
-    comment: 'Configuration spécifique au modèle (température, top_p, etc.)'
   },
   createdAt: {
     type: DataTypes.DATE,

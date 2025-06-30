@@ -1,10 +1,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/db.js';
 
-/**
- * Modèle User - Représente les utilisateurs de l'application
- * Gère l'authentification et les informations de profil
- */
 const User = sequelize.define('User', {
   id: {
     type: DataTypes.INTEGER,
