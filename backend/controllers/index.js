@@ -1,0 +1,1 @@
+export { default as skeletonController } from './skeletonController.js';
