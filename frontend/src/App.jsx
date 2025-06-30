@@ -1,13 +1,7 @@
-//import Conversation from './pages/Conversation';
-import Login from './pages/Login'
-import Register from './pages/Register';
+import Router from './routes';
+
 function App() {
-  return (
-   //<Conversation />
-   <Login/>
-   //<Register/>
-   
-  );
+  return <Router />;
 }
 
 export default App;
