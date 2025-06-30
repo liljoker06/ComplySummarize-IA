@@ -1,0 +1,1 @@
+export { default as skeletonRoutes } from './skeletonRoutes.js';
