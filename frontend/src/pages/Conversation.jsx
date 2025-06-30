@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardContent } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Textarea } from "../components/ui/textarea";
-import { Loader2, UploadCloud, X, Plus, Menu, Send } from "lucide-react";
+import { Loader2, UploadCloud, X, Plus, Menu, Send, Moon, Sun } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 
 export default function Conversation() {
@@ -16,9 +16,11 @@ export default function Conversation() {
   const fileInputRef = useRef();
 
   useEffect(() => {
-    const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    setIsDarkMode(isDark);
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setIsDarkMode(prefersDark);
   }, []);
+
+  const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
   const onDrop = (acceptedFiles) => {
     setFiles((prev) => [...prev, ...acceptedFiles]);
@@ -62,7 +64,7 @@ export default function Conversation() {
   };
 
   return (
-    <div className={`flex min-h-screen text-sm relative ${isDarkMode ? 'bg-[#202123] text-gray-200' : 'text-gray-900 bg-white'}`}>
+    <div className={`flex min-h-screen text-sm relative transition-colors duration-300 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-white text-gray-900'}`}>
       {isDragActive && (
         <div className="absolute inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center pointer-events-none">
           <div className="text-2xl font-semibold text-white">Déposer</div>
@@ -70,7 +72,7 @@ export default function Conversation() {
       )}
 
       {/* Sidebar */}
-      <aside className={`border-r w-64 p-4 flex flex-col ${sidebarOpen ? "block" : "hidden"} md:flex ${isDarkMode ? 'bg-[#2a2b2e] border-gray-700' : 'bg-[#f7f7f8]'}`}>
+      <aside className={`border-r w-64 p-4 flex flex-col ${sidebarOpen ? "block" : "hidden"} md:flex ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-100 border-gray-200'}`}>
         <h2 className="text-lg font-semibold mb-4">Conversations</h2>
         <ul className="space-y-2 flex-1 overflow-y-auto">
           <li className="p-2 rounded-lg hover:bg-gray-700/30 cursor-pointer">Résumé du contrat A</li>
@@ -86,14 +88,19 @@ export default function Conversation() {
 
         <header className={`flex items-center justify-between px-6 py-4 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
           <h1 className="text-xl font-bold">ComplySummarize IA</h1>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden text-gray-500">
-            <Menu />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={toggleTheme} className="text-gray-500 hover:text-primary">
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="md:hidden text-gray-500">
+              <Menu />
+            </button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {summary && (
-            <Card className={`mt-6 ${isDarkMode ? 'bg-[#2e2f32] text-gray-100' : ''}`}>
+            <Card className={`mt-6 ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'}`}>
               <CardContent className="space-y-4">
                 <div>
                   <h2 className="text-lg font-semibold">Résumé :</h2>
@@ -121,10 +128,10 @@ export default function Conversation() {
         </div>
 
         {/* Input area fixed bottom */}
-        <div className={`w-full p-4 border-t ${isDarkMode ? 'bg-[#2a2b2e] border-gray-700' : 'bg-white border-gray-200'}`}>
+        <div className={`w-full p-4 border-t ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
           <div className="flex flex-wrap gap-2 mb-4">
             {files.map((file, index) => (
-              <div key={index} className={`px-3 py-1 rounded-full flex items-center space-x-2 ${isDarkMode ? 'bg-gray-700 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>
+              <div key={index} className={`px-3 py-1 rounded-full flex items-center space-x-2 ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-700'}`}>
                 <span className="truncate max-w-[150px]">{file.name}</span>
                 <button onClick={() => removeFile(index)} className="text-gray-400 hover:text-red-500">
                   <X size={14} />
@@ -158,7 +165,7 @@ export default function Conversation() {
               id="llm-select"
               value={selectedLLM}
               onChange={(e) => setSelectedLLM(e.target.value)}
-              className={`border rounded px-2 py-1 text-sm ${isDarkMode ? 'bg-gray-800 text-white border-gray-600' : 'bg-white border-gray-300 text-gray-900'}`}
+              className={`border rounded px-2 py-1 text-sm ${isDarkMode ? 'bg-gray-900 text-white border-gray-600' : 'bg-white border-gray-300 text-gray-900'}`}
             >
               <option value="gpt-4">GPT-4</option>
               <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
