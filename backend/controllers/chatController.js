@@ -144,7 +144,7 @@ class ChatController {
             });
 
             const defaultModel = await Model.findOne({ where: { isDefault: true } });
-            const finalModelName = modelName || (defaultModel ? defaultModel.name : 'gemma3:12b');
+            const finalModelName = modelName || (defaultModel ? defaultModel.name : 'gemma3:1b');
 
             const conversationHistory = ollamaService.buildConversationHistory(
                 previousMessages, 

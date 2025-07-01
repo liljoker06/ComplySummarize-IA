@@ -118,7 +118,7 @@ class ModelController {
                 return res.json({ 
                     message: "Aucun modèle par défaut défini.",
                     defaultModel: null,
-                    fallback: 'gemma3:12b'
+                    fallback: 'gemma3:1b'
                 });
             }
 
