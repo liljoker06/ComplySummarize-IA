@@ -1,8 +1,9 @@
 import { useState, useRef } from 'react'
-import { FiSend, FiUpload } from 'react-icons/fi'
+import { FiSend, FiUpload, FiPaperclip, FiX } from 'react-icons/fi'
 import { PiChatCircleTextLight } from 'react-icons/pi'
 import { useEffect } from 'react'
 import ModelSelector from './ModelSelector'
+import { IoChevronForward } from 'react-icons/io5'
 
 
 
@@ -48,6 +49,10 @@ export default function Chat({ toggleSidebar }) {
         }
     }, [files])
 
+    const removeFile = (index) => {
+        setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index))
+    }
+
 
 
 
@@ -77,29 +82,37 @@ export default function Chat({ toggleSidebar }) {
         <>
             {isDragging && (
                 <div className="fixed inset-0 bg-black/60 z-50 flex flex-col items-center justify-center text-white text-center p-4 pointer-events-none">
-                    <div className="text-2xl font-semibold mb-2">📎 Ajouter un document</div>
+                    <div className="text-2xl font-semibold mb-2"><FiPaperclip size={14} /> Ajouter un document</div>
                     <div className="text-sm opacity-80">Déposez-le ici pour l'envoyer</div>
                 </div>
             )}
 
-            <div className="flex-1 flex flex-col px-6 py-4">
-                {/* Mobile toggle button */}
-                <div className="md:hidden mb-4">
+            <div className="flex-1 flex flex-col px-6 py-4 ">
+
+                {/* Bouton pour ouvrir la sidebar (visible en mobile uniquement) */}
+                {/* Chevron + Sélecteur dans la même ligne */}
+                <div className="md:hidden mb-4 flex items-center gap-2">
                     <button
                         onClick={toggleSidebar}
-                        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                        className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
                     >
-                        Menu
+                        <IoChevronForward size={20} />
                     </button>
+                    <div className="flex-1">
+                        <ModelSelector />
+                    </div>
                 </div>
 
-                {/* Modèle IA */}
-                <ModelSelector />
+                {/* Desktop : Select seul */}
+                <div className="hidden md:block mb-4">
+                    <ModelSelector />
+                </div>
+
 
 
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto px-4">
+                <div className="flex-1 overflow-y-auto px-4 mt-4">
                     <div className="max-w-2xl mx-auto flex flex-col space-y-4">
                         {messages.length === 0 ? (
                             <div className="flex flex-col items-center justify-center text-center text-gray-600 dark:text-gray-400 mt-24">
@@ -112,8 +125,8 @@ export default function Chat({ toggleSidebar }) {
                                 <div
                                     key={i}
                                     className={`w-fit max-w-full p-3 rounded-xl ${msg.role === 'user'
-                                            ? 'self-end bg-blue-100 dark:bg-blue-800 text-right'
-                                            : 'self-start bg-gray-200 dark:bg-gray-700'
+                                        ? 'self-end bg-blue-100 dark:bg-blue-800 text-right'
+                                        : 'self-start bg-gray-200 dark:bg-gray-700'
                                         }`}
                                 >
                                     {msg.content}
@@ -127,18 +140,28 @@ export default function Chat({ toggleSidebar }) {
                 {/* Drop zone + preview */}
                 {files.length > 0 && (
                     <div className="mt-4 flex justify-center">
-                        <div className="flex flex-wrap gap-2 max-w-2xl w-full">
+                        <div className="flex flex-wrap gap-2 max-w-2xl w-full justify-center">
                             {files.map((file, idx) => (
                                 <div
                                     key={idx}
-                                    className="bg-gray-100 dark:bg-gray-700 px-3 py-1 rounded-full text-sm text-gray-700 dark:text-white"
+                                    className="relative flex items-center bg-gray-100 dark:bg-gray-700 px-3 py-1 pr-8 rounded-full text-sm text-gray-700 dark:text-white gap-1"
                                 >
-                                    📎 {file.name}
+                                    <FiPaperclip size={14} />
+                                    <span className="truncate max-w-[150px]">{file.name}</span>
+                                    <button
+                                        onClick={() => removeFile(idx)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                                        title="Supprimer ce fichier"
+                                    >
+                                        <FiX size={14} />
+                                    </button>
                                 </div>
                             ))}
                         </div>
                     </div>
                 )}
+
+
 
                 {/* Zone de saisie */}
                 <div className="mt-4 flex justify-center">

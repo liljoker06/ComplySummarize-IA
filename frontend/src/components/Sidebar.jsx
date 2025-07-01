@@ -5,11 +5,14 @@ import { PiChatCircleTextLight } from 'react-icons/pi'
 export default function Sidebar({ isOpen, toggleSidebar }) {
   return (
     <div
-      className={`transition-all duration-300 ease-in-out 
-        ${isOpen ? 'w-72' : 'w-16'} 
-        h-full bg-white/70 dark:bg-gray-800/50 
-        backdrop-blur-md border-r border-gray-200 dark:border-gray-700 
-        shadow-sm p-3 flex flex-col`}
+      className={`
+        fixed md:relative top-0 left-0 z-50
+        h-full bg-white/70 dark:bg-gray-800/50
+        backdrop-blur-md border-r border-gray-200 dark:border-gray-700 shadow-sm
+        p-3 flex flex-col transition-all duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0 w-full md:w-72' : '-translate-x-full w-full md:w-16'}
+        md:translate-x-0
+      `}
     >
       {/* Toggle Button */}
       <div className="flex justify-end mb-4">
@@ -23,7 +26,9 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
 
       {/* New conversation */}
       {isOpen && (
-        <button className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:brightness-110 text-white font-medium px-4 py-2 mb-4 rounded-xl shadow-md transition-all">
+        <button
+          className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:brightness-110 text-white font-medium px-4 py-2 mb-4 rounded-xl shadow-md transition-all"
+        >
           <FiPlus />
           Nouvelle conversation
         </button>
