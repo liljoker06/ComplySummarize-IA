@@ -1,9 +1,15 @@
 // Login.jsx
 import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth.jsx";
 import logo from "../assets/logo_complysummarize.png";
 import illustration from "../assets/login_side_illustration.png";
+import { FiEye, FiEyeOff, FiLoader } from "react-icons/fi";
 
 export default function Login() {
+  const navigate = useNavigate();
+  const { login, isLoading, error, clearError, isAuthenticated } = useAuth();
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -22,6 +28,20 @@ export default function Login() {
       localStorage.setItem("theme", "light");
     }
   }, [darkMode]);
+
+  // Rediriger si déjà connecté
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
+
+  // Effacer les erreurs quand on change les champs
+  useEffect(() => {
+    if (error) {
+      clearError();
+    }
+  }, [email, password, clearError]);
 
   const t = {
     fr: {
@@ -44,9 +64,19 @@ export default function Login() {
     },
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // TODO: Login logic
+    
+    if (!email.trim() || !password.trim()) {
+      return;
+    }
+
+    const result = await login(email.trim(), password);
+    
+    if (result.success) {
+      navigate('/');
+    }
+    // Les erreurs sont gérées automatiquement par le hook useAuth
   };
 
   return (
@@ -90,6 +120,13 @@ export default function Login() {
               {t[lang].loginTitle}
             </h2>
 
+            {/* Affichage des erreurs */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
+
             <input
               type="email"
               placeholder={t[lang].email}
@@ -110,18 +147,20 @@ export default function Login() {
               />
               <button
                 type="button"
-                className="absolute right-3 top-2 text-gray-500"
+                className="absolute right-3 top-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                👁
+                {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
               </button>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-[#407BFF] text-white py-2 rounded hover:bg-[#3366cc] transition"
+              disabled={isLoading || !email.trim() || !password.trim()}
+              className="w-full bg-[#407BFF] text-white py-2 rounded hover:bg-[#3366cc] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {t[lang].login}
+              {isLoading && <FiLoader className="animate-spin" size={16} />}
+              {isLoading ? 'Connexion...' : t[lang].login}
             </button>
 
             <div className="text-sm text-center mt-4">
@@ -132,9 +171,9 @@ export default function Login() {
 
             <div className="text-sm text-center mt-2">
               {t[lang].noAccount} {" "}
-              <a href="#" className="text-[#407BFF] hover:underline">
+              <Link to="/register" className="text-[#407BFF] hover:underline">
                 {t[lang].signUp}
-              </a>
+              </Link>
             </div>
           </form>
 

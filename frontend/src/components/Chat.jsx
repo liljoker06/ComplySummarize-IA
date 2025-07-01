@@ -1,24 +1,32 @@
-import { useState, useRef } from 'react'
-import { FiSend, FiUpload, FiPaperclip, FiX } from 'react-icons/fi'
+import { useState, useRef, useEffect } from 'react'
+import { FiSend, FiUpload, FiPaperclip, FiX, FiAlertCircle } from 'react-icons/fi'
 import { PiChatCircleTextLight } from 'react-icons/pi'
-import { useEffect } from 'react'
 import ModelSelector from './ModelSelector'
 import { IoChevronForward } from 'react-icons/io5'
 import { RxDotFilled } from 'react-icons/rx'
-import { useNavigate } from 'react-router-dom'
-import { FiSettings } from 'react-icons/fi'
-
-
-
+import { useChat } from '../hooks/useChat'
+import { useParams } from 'react-router-dom'
+import FileIndicator from './FileIndicator'
 
 export default function Chat({ toggleSidebar }) {
-    const [messages, setMessages] = useState([])
+    const { chatId } = useParams()
     const [input, setInput] = useState('')
     const [files, setFiles] = useState([])
+    const [selectedModel, setSelectedModel] = useState(null)
     const fileInputRef = useRef(null)
     const [isDragging, setIsDragging] = useState(false)
-    const [isTyping, setIsTyping] = useState(false)
-    const navigate = useNavigate()
+    const messagesEndRef = useRef(null)
+
+    const {
+        currentChat,
+        messages,
+        isLoading,
+        isTyping,
+        error,
+        sendMessage,
+        uploadDocumentWithInstructions,
+        clearError
+    } = useChat(chatId)
 
 
 
@@ -56,37 +64,48 @@ export default function Chat({ toggleSidebar }) {
         }
     }, [files])
 
+    // Scroll automatique vers le bas
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }, [messages])
+
     const removeFile = (index) => {
         setFiles((prevFiles) => prevFiles.filter((_, i) => i !== index))
     }
 
-
-
-
-
-    const handleSend = () => {
+    const handleSend = async () => {
         if (!input.trim()) return
 
-        const userMessage = { role: 'user', content: input }
-        setMessages(prev => [...prev, userMessage])
+        // Si pas de chat actuel et des fichiers, upload avec instructions
+        if (!currentChat && files.length > 0) {
+            try {
+                await uploadDocumentWithInstructions(
+                    files[0], 
+                    input.trim(), 
+                    selectedModel
+                )
         setInput('')
-        setIsTyping(true)
-
-        // Simuler réponse IA
-        setTimeout(() => {
-            const assistantMessage = {
-                role: 'assistant',
-                content: `"${userMessage.content}"`
+                setFiles([])
+            } catch (err) {
+                console.error('Erreur upload:', err)
             }
-            setMessages(prev => [...prev, assistantMessage])
-            setIsTyping(false)
-        }, 1000)
-    }
+            return
+        }
 
+        // Sinon, envoyer un message normal
+        if (currentChat) {
+            await sendMessage(input.trim(), selectedModel)
+            setInput('')
+        }
+    }
 
     const handleFiles = (e) => {
         const newFiles = [...files, ...Array.from(e.target.files)]
         setFiles(newFiles)
+    }
+
+    const handleModelChange = (modelName) => {
+        setSelectedModel(modelName)
     }
 
     return (
@@ -100,38 +119,41 @@ export default function Chat({ toggleSidebar }) {
 
             <div className="flex-1 flex flex-col px-6 py-4 ">
 
-      {/* Mobile */}
-      <div className="md:hidden mb-4 flex items-center gap-2">
-        <button
-          onClick={toggleSidebar}
-          className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
-        >
-          <IoChevronForward size={20} />
-        </button>
-        <div className="flex-1">
-          <ModelSelector />
-        </div>
-        <button
-          onClick={() => navigate('/settings')}
-          className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
-        >
-          <FiSettings size={20} />
-        </button>
-      </div>
+                {/* Bouton pour ouvrir la sidebar (visible en mobile uniquement) */}
+                {/* Chevron + Sélecteur dans la même ligne */}
+                <div className="md:hidden mb-4 flex items-center gap-2">
+                    <button
+                        onClick={toggleSidebar}
+                        className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
+                    >
+                        <IoChevronForward size={20} />
+                    </button>
+                    <div className="flex-1">
+                        <ModelSelector onModelChange={handleModelChange} selectedModel={selectedModel} />
+                    </div>
+                </div>
 
-      {/* Desktop */}
-      <div className="hidden md:flex mb-4 items-center justify-between">
-        <ModelSelector />
-        <button
-          onClick={() => navigate('/settings')}
-          className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow ml-2"
-        >
-          <FiSettings size={20} />
-        </button>
-      </div>
+                {/* Desktop : Select seul */}
+                <div className="hidden md:block mb-4">
+                    <ModelSelector onModelChange={handleModelChange} selectedModel={selectedModel} />
+                </div>
 
 
 
+
+                {/* Messages d'erreur */}
+                {error && (
+                    <div className="mb-4 flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <FiAlertCircle className="text-red-500" />
+                        <span className="text-red-700 dark:text-red-300 text-sm">{error}</span>
+                        <button 
+                            onClick={clearError}
+                            className="ml-auto text-red-500 hover:text-red-700"
+                        >
+                            <FiX size={16} />
+                        </button>
+                    </div>
+                )}
 
                 {/* Messages */}
                 <div className="flex-1 overflow-y-auto px-4 mt-4">
@@ -140,19 +162,49 @@ export default function Chat({ toggleSidebar }) {
                             <div className="flex flex-col items-center justify-center text-center text-gray-600 dark:text-gray-400 mt-24">
                                 <PiChatCircleTextLight size={48} className="mb-4 text-blue-500" />
                                 <p className="text-lg font-medium">Bienvenue dans votre assistant IA</p>
-                                <p className="text-sm mt-2">Choisissez un modèle et posez votre première question.</p>
+                                
+                                {/* Affichage du fichier associé au chat */}
+                                {currentChat?.file ? (
+                                    <div className="mt-4">
+                                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Document analysé:</p>
+                                        <FileIndicator fileName={currentChat.file.originalName} />
+                                    </div>
+                                ) : null}
+                                
+                                <p className="text-sm mt-4">
+                                    {files.length > 0 
+                                        ? "Ajoutez vos instructions et envoyez pour analyser le document"
+                                        : currentChat?.file 
+                                            ? "Posez vos questions sur ce document"
+                                            : "Choisissez un modèle et posez votre première question, ou uploadez un document"
+                                    }
+                                </p>
                             </div>
                         ) : (
                             <>
                                 {messages.map((msg, i) => (
                                     <div
-                                        key={i}
-                                        className={`w-fit max-w-full p-3 rounded-xl ${msg.role === 'user'
+                                        key={msg.id || i}
+                                        className={`w-fit max-w-full p-3 rounded-xl ${msg.type === 'user'
                                             ? 'self-end bg-blue-100 dark:bg-blue-800 text-right'
                                             : 'self-start bg-gray-200 dark:bg-gray-700'
                                             }`}
                                     >
-                                        {msg.content}
+                                        {/* Indicateur de fichier pour le premier message utilisateur */}
+                                        {msg.type === 'user' && i === 0 && currentChat?.file && (
+                                            <FileIndicator 
+                                                fileName={currentChat.file.originalName} 
+                                                className="mb-2"
+                                            />
+                                        )}
+                                        
+                                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                                        
+                                        {msg.metadata && (
+                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                {msg.metadata.model && `Modèle: ${msg.metadata.model}`}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
 
@@ -166,6 +218,7 @@ export default function Chat({ toggleSidebar }) {
                                         </span>
                                     </div>
                                 )}
+                                <div ref={messagesEndRef} />
                             </>
                         )}
                     </div>
@@ -179,13 +232,22 @@ export default function Chat({ toggleSidebar }) {
                             {files.map((file, idx) => (
                                 <div
                                     key={idx}
-                                    className="relative flex items-center bg-gray-100 dark:bg-gray-700 px-3 py-1 pr-8 rounded-full text-sm text-gray-700 dark:text-white gap-1"
+                                    className="relative flex items-center bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 px-3 py-2 pr-8 rounded-lg text-sm"
                                 >
-                                    <FiPaperclip size={14} />
-                                    <span className="truncate max-w-[150px]">{file.name}</span>
+                                    <div className="flex items-center gap-2">
+                                        <FiPaperclip className="text-blue-600 dark:text-blue-400" size={14} />
+                                        <div>
+                                            <p className="text-blue-800 dark:text-blue-200 font-medium truncate max-w-[150px]">
+                                                {file.name}
+                                            </p>
+                                            <p className="text-xs text-blue-600 dark:text-blue-400">
+                                                Prêt à analyser
+                                            </p>
+                                        </div>
+                                    </div>
                                     <button
                                         onClick={() => removeFile(idx)}
-                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-red-500"
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-400 hover:text-red-500 transition-colors"
                                         title="Supprimer ce fichier"
                                     >
                                         <FiX size={14} />
@@ -238,8 +300,13 @@ export default function Chat({ toggleSidebar }) {
                         {/* Envoyer */}
                         <button
                             onClick={handleSend}
-                            className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-all"
-                            title="Envoyer"
+                            disabled={isLoading || (!input.trim())}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white p-2 rounded-lg transition-all"
+                            title={
+                                !currentChat && files.length > 0 
+                                    ? "Analyser le document" 
+                                    : "Envoyer le message"
+                            }
                         >
                             <FiSend size={18} />
                         </button>
