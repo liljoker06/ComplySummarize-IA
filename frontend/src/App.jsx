@@ -1,9 +1,7 @@
-import Conversation from './pages/Conversation';
+import Router from './routes';
 
 function App() {
-  return (
-    <Conversation />
-  );
+  return <Router />;
 }
 
 export default App;
