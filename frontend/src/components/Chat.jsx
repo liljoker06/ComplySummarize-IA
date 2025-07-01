@@ -5,6 +5,8 @@ import { useEffect } from 'react'
 import ModelSelector from './ModelSelector'
 import { IoChevronForward } from 'react-icons/io5'
 import { RxDotFilled } from 'react-icons/rx'
+import { useNavigate } from 'react-router-dom'
+import { FiSettings } from 'react-icons/fi'
 
 
 
@@ -16,6 +18,7 @@ export default function Chat({ toggleSidebar }) {
     const fileInputRef = useRef(null)
     const [isDragging, setIsDragging] = useState(false)
     const [isTyping, setIsTyping] = useState(false)
+    const navigate = useNavigate()
 
 
 
@@ -97,24 +100,35 @@ export default function Chat({ toggleSidebar }) {
 
             <div className="flex-1 flex flex-col px-6 py-4 ">
 
-                {/* Bouton pour ouvrir la sidebar (visible en mobile uniquement) */}
-                {/* Chevron + Sélecteur dans la même ligne */}
-                <div className="md:hidden mb-4 flex items-center gap-2">
-                    <button
-                        onClick={toggleSidebar}
-                        className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
-                    >
-                        <IoChevronForward size={20} />
-                    </button>
-                    <div className="flex-1">
-                        <ModelSelector />
-                    </div>
-                </div>
+      {/* Mobile */}
+      <div className="md:hidden mb-4 flex items-center gap-2">
+        <button
+          onClick={toggleSidebar}
+          className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
+        >
+          <IoChevronForward size={20} />
+        </button>
+        <div className="flex-1">
+          <ModelSelector />
+        </div>
+        <button
+          onClick={() => navigate('/settings')}
+          className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
+        >
+          <FiSettings size={20} />
+        </button>
+      </div>
 
-                {/* Desktop : Select seul */}
-                <div className="hidden md:block mb-4">
-                    <ModelSelector />
-                </div>
+      {/* Desktop */}
+      <div className="hidden md:flex mb-4 items-center justify-between">
+        <ModelSelector />
+        <button
+          onClick={() => navigate('/settings')}
+          className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow ml-2"
+        >
+          <FiSettings size={20} />
+        </button>
+      </div>
 
 
 
