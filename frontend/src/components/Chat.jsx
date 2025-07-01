@@ -4,6 +4,8 @@ import { PiChatCircleTextLight } from 'react-icons/pi'
 import { useEffect } from 'react'
 import ModelSelector from './ModelSelector'
 import { IoChevronForward } from 'react-icons/io5'
+import { RxDotFilled } from 'react-icons/rx'
+
 
 
 
@@ -13,6 +15,8 @@ export default function Chat({ toggleSidebar }) {
     const [files, setFiles] = useState([])
     const fileInputRef = useRef(null)
     const [isDragging, setIsDragging] = useState(false)
+    const [isTyping, setIsTyping] = useState(false)
+
 
 
     useEffect(() => {
@@ -56,22 +60,26 @@ export default function Chat({ toggleSidebar }) {
 
 
 
+
     const handleSend = () => {
         if (!input.trim()) return
 
         const userMessage = { role: 'user', content: input }
         setMessages(prev => [...prev, userMessage])
         setInput('')
+        setIsTyping(true)
 
-        // Simuler une réponse IA
+        // Simuler réponse IA
         setTimeout(() => {
             const assistantMessage = {
                 role: 'assistant',
-                content: `Réponse simulée de ${selectedModel} à : "${userMessage.content}"`
+                content: `"${userMessage.content}"`
             }
             setMessages(prev => [...prev, assistantMessage])
-        }, 800)
+            setIsTyping(false)
+        }, 1000)
     }
+
 
     const handleFiles = (e) => {
         const newFiles = [...files, ...Array.from(e.target.files)]
@@ -121,17 +129,30 @@ export default function Chat({ toggleSidebar }) {
                                 <p className="text-sm mt-2">Choisissez un modèle et posez votre première question.</p>
                             </div>
                         ) : (
-                            messages.map((msg, i) => (
-                                <div
-                                    key={i}
-                                    className={`w-fit max-w-full p-3 rounded-xl ${msg.role === 'user'
-                                        ? 'self-end bg-blue-100 dark:bg-blue-800 text-right'
-                                        : 'self-start bg-gray-200 dark:bg-gray-700'
-                                        }`}
-                                >
-                                    {msg.content}
-                                </div>
-                            ))
+                            <>
+                                {messages.map((msg, i) => (
+                                    <div
+                                        key={i}
+                                        className={`w-fit max-w-full p-3 rounded-xl ${msg.role === 'user'
+                                            ? 'self-end bg-blue-100 dark:bg-blue-800 text-right'
+                                            : 'self-start bg-gray-200 dark:bg-gray-700'
+                                            }`}
+                                    >
+                                        {msg.content}
+                                    </div>
+                                ))}
+
+                                {/* Typing animation */}
+                                {isTyping && (
+                                    <div className="self-start bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm px-3 py-2 rounded-xl w-fit flex items-center gap-1">
+                                        <span className="flex gap-1 ml-1">
+                                            <span className="animate-bounce [animation-delay:0ms]"><RxDotFilled size={10} /></span>
+                                            <span className="animate-bounce [animation-delay:150ms]"><RxDotFilled size={10} /></span>
+                                            <span className="animate-bounce [animation-delay:300ms]"><RxDotFilled size={10} /></span>
+                                        </span>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
