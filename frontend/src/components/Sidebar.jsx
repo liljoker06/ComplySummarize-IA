@@ -1,8 +1,56 @@
 import { IoChevronBack, IoChevronForward } from 'react-icons/io5'
-import { FiPlus } from 'react-icons/fi'
+import { FiPlus, FiTrash2, FiArchive, FiLoader, FiPaperclip, FiLogOut, FiUser } from 'react-icons/fi'
 import { PiChatCircleTextLight } from 'react-icons/pi'
+import { useChat } from '../hooks/useChat'
+import { useAuth } from '../hooks/useAuth.jsx'
+import { useNavigate, useParams } from 'react-router-dom'
+import FileIndicator from './FileIndicator'
 
 export default function Sidebar({ isOpen, toggleSidebar }) {
+  const navigate = useNavigate()
+  const { chatId } = useParams()
+  const { user, logout } = useAuth()
+  const { chats, isLoading, deleteChat, archiveChat, selectChat } = useChat()
+
+  const handleNewConversation = () => {
+    navigate('/conversation')
+  }
+
+  const handleChatSelect = (chat) => {
+    navigate(`/conversation/${chat.id}`)
+    selectChat(chat)
+    if (window.innerWidth < 768) {
+      toggleSidebar()
+    }
+  }
+
+  const handleDeleteChat = async (e, chatIdToDelete) => {
+    e.stopPropagation()
+    if (window.confirm('Êtes-vous sûr de vouloir supprimer cette conversation ?')) {
+      await deleteChat(chatIdToDelete)
+      if (chatId === chatIdToDelete.toString()) {
+        navigate('/conversation')
+      }
+    }
+  }
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const diffInHours = Math.abs(now - date) / 36e5
+
+    if (diffInHours < 24) {
+      return date.toLocaleTimeString('fr-FR', { 
+        hour: '2-digit', 
+        minute: '2-digit' 
+      })
+    } else {
+      return date.toLocaleDateString('fr-FR', { 
+        day: '2-digit', 
+        month: '2-digit' 
+      })
+    }
+  }
   return (
     <div
       className={`
@@ -14,8 +62,16 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         md:translate-x-0
       `}
     >
-      {/* Toggle Button */}
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-between items-center mb-4">
+        {isOpen && user && (
+          <div className="flex items-center gap-2 text-sm">
+            <FiUser className="text-gray-500 dark:text-gray-400" size={16} />
+            <span className="text-gray-700 dark:text-gray-300 truncate">
+              {user.firstName} {user.lastName}
+            </span>
+          </div>
+        )}
+        
         <button
           onClick={toggleSidebar}
           className="p-2 rounded-full bg-white/80 dark:bg-gray-700 hover:bg-white hover:scale-110 dark:hover:bg-gray-600 shadow transition-all"
@@ -24,9 +80,9 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         </button>
       </div>
 
-      {/* New conversation */}
       {isOpen && (
         <button
+          onClick={handleNewConversation}
           className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:brightness-110 text-white font-medium px-4 py-2 mb-4 rounded-xl shadow-md transition-all"
         >
           <FiPlus />
@@ -34,24 +90,92 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         </button>
       )}
 
-      {/* Conversations list */}
       <div className="flex-1 overflow-auto space-y-2 pr-1 scrollbar-thin scrollbar-thumb-gray-400/30 dark:scrollbar-thumb-gray-600/40">
-        {[1, 2, 3].map((i) => (
-          <div
-            key={i}
-            className={`group flex items-center gap-3 p-3 rounded-xl cursor-pointer 
-              bg-white/70 dark:bg-gray-700/60 
-              hover:bg-gray-100 dark:hover:bg-gray-600 transition-all shadow-sm`}
-          >
-            <PiChatCircleTextLight className="text-blue-500" size={20} />
-            {isOpen && (
-              <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                Conversation {i}
-              </span>
+        {isLoading && chats.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <FiLoader className="animate-spin text-gray-400" size={24} />
+          </div>
+        ) : chats.length === 0 ? (
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            {isOpen ? (
+              <div>
+                <PiChatCircleTextLight size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Aucune conversation</p>
+                <p className="text-xs mt-1">Uploadez un document pour commencer</p>
+              </div>
+            ) : (
+              <PiChatCircleTextLight size={24} className="opacity-50" />
             )}
           </div>
-        ))}
+        ) : (
+          chats.map((chat) => (
+          <div
+              key={chat.id}
+              onClick={() => handleChatSelect(chat)}
+            className={`group flex items-center gap-3 p-3 rounded-xl cursor-pointer 
+                ${chatId === chat.id.toString() 
+                  ? 'bg-blue-100 dark:bg-blue-900/50 border border-blue-300 dark:border-blue-700' 
+                  : 'bg-white/70 dark:bg-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-600'
+                } transition-all shadow-sm`}
+          >
+              <PiChatCircleTextLight 
+                className={chatId === chat.id.toString() ? 'text-blue-600' : 'text-blue-500'} 
+                size={20} 
+              />
+            {isOpen && (
+                <>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                        {chat.title}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-2 flex-shrink-0">
+                        {formatDate(chat.lastMessageAt || chat.createdAt)}
+              </span>
+                    </div>
+                    {chat.file && (
+                      <div className="mt-1">
+                        <FileIndicator 
+                          fileName={chat.file.originalName} 
+                          isCompact={true}
+                        />
+                      </div>
+                    )}
+                    {chat.messageCount > 0 && (
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                        {chat.messageCount} message{chat.messageCount > 1 ? 's' : ''}
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => handleDeleteChat(e, chat.id)}
+                      className="p-1 rounded text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                      title="Supprimer"
+                    >
+                      <FiTrash2 size={14} />
+                    </button>
+                  </div>
+                </>
+            )}
+          </div>
+          ))
+        )}
       </div>
+
+      {/* Bouton de déconnexion */}
+      {isOpen && (
+        <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <button
+            onClick={logout}
+            className="flex items-center gap-2 w-full text-left px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+          >
+            <FiLogOut size={16} />
+            Se déconnecter
+          </button>
+        </div>
+      )}
     </div>
   )
 }

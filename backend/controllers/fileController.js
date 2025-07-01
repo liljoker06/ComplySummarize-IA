@@ -44,7 +44,7 @@ class FileController {
             const extractedText = await this.extractTextFromPDF(filePath);
 
             const defaultModel = await Model.findOne({ where: { isDefault: true } });
-            const modelName = defaultModel ? defaultModel.name : 'gemma3:12b';
+            const modelName = defaultModel ? defaultModel.name : 'gemma3:1b';
 
             // Utiliser le service Ollama pour résumer le document
             const result = await ollamaService.summarizeDocument(extractedText, modelName);
@@ -138,7 +138,7 @@ class FileController {
             });
 
             const defaultModel = await Model.findOne({ where: { isDefault: true } });
-            const finalModelName = modelName || (defaultModel ? defaultModel.name : 'gemma3:12b');
+            const finalModelName = modelName || (defaultModel ? defaultModel.name : 'gemma3:1b');
 
             // Utiliser le service Ollama pour traiter les instructions
             const result = await ollamaService.processInstructions(extractedText, instructions, finalModelName);

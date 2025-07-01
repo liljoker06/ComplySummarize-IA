@@ -135,6 +135,74 @@ class AuthController {
         });
         }
     }
+
+    async validateToken(req, res) {
+        try {
+            // Si on arrive ici, c'est que le middleware d'authentification a validé le token
+            const user = await User.findByPk(req.user.userId, {
+                attributes: ['id', 'email', 'firstName', 'lastName', 'role', 'isActive']
+            });
+
+            if (!user || !user.isActive) {
+                return res.status(401).json({ valid: false, error: 'Utilisateur non trouvé ou désactivé' });
+            }
+
+            res.json({ 
+                valid: true, 
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    role: user.role
+                }
+            });
+        } catch (error) {
+            console.error('Erreur validation token:', error);
+            res.status(401).json({ valid: false, error: 'Token invalide' });
+        }
+    }
+
+    async refreshToken(req, res) {
+        try {
+            // Vérifier que l'utilisateur existe toujours et est actif
+            const user = await User.findByPk(req.user.userId);
+            
+            if (!user || !user.isActive) {
+                return res.status(401).json({ error: 'Utilisateur non trouvé ou désactivé' });
+            }
+
+            // Générer un nouveau token
+            const newToken = jwt.sign(
+                { 
+                    userId: user.id,
+                    email: user.email,
+                    role: user.role 
+                },
+                process.env.JWT_SECRET,
+                { expiresIn: '1d' }
+            );
+
+            const userResponse = {
+                id: user.id,
+                email: user.email,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                role: user.role
+            };
+
+            res.json({
+                token: newToken,
+                user: userResponse
+            });
+        } catch (error) {
+            console.error('Erreur rafraîchissement token:', error);
+            res.status(500).json({ 
+                error: 'Erreur serveur lors du rafraîchissement du token',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    }
 }
 
 export default new AuthController();

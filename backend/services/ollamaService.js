@@ -117,7 +117,7 @@ Reste toujours professionnel et utile dans tes réponses.`;
         }
     }
 
-    async summarizeDocument(documentText, modelName = 'gemma3:12b') {
+    async summarizeDocument(documentText, modelName = 'gemma3:1b') {
         const messages = [
             {
                 role: 'system',
@@ -138,7 +138,7 @@ Reste toujours professionnel et utile dans tes réponses.`;
         return await this.chatWithJsonResponse(modelName, messages, jsonFormat);
     }
 
-    async processInstructions(documentText, instructions, modelName = 'gemma3:12b') {
+    async processInstructions(documentText, instructions, modelName = 'gemma3:1b') {
         const messages = [
             {
                 role: 'system',
@@ -161,7 +161,7 @@ Reste toujours professionnel et utile dans tes réponses.`;
         return await this.chatWithJsonResponse(modelName, messages, jsonFormat);
     }
 
-    async continueConversation(conversationHistory, newMessage, modelName = 'gemma3:12b') {
+    async continueConversation(conversationHistory, newMessage, modelName = 'gemma3:1b') {
         const messages = [...conversationHistory];
         messages.push({
             role: 'user',
