@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { sequelize } from './config/index.js';
-import { skeletonRoutes } from './routes/index.js';
+import { skeletonRoutes, authRoutes, fileRoutes, chatRoutes, modelRoutes } from './routes/index.js';
 
 dotenv.config();
 
@@ -18,6 +18,10 @@ app.use(cors(
 app.use(express.json());
 
 app.use('/api/skeletons', skeletonRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/files', fileRoutes);
+app.use('/api/chats', chatRoutes);
+app.use('/api/models', modelRoutes);
 
 // Database connection and sync
 const startServer = async () => {
