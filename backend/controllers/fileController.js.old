@@ -2,12 +2,21 @@ import fs from 'fs';
 import path from 'path';
 import pdfParse from 'pdf-parse';
 import { Chat, File, Message, Model } from '../models/index.js';
-import ollamaService from '../services/ollamaService.js';
+import { OpenAI } from 'openai';
 import dotenv from 'dotenv';
+import { Mistral } from '@mistralai/mistralai';
 
 dotenv.config();
 
 class FileController {
+    constructor() {
+        this.openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+        });
+        this.mistral = new Mistral({
+            apiKey: process.env.MISTRAL_API_KEY,
+        });
+    }
 
     async extractTextFromPDF(filePath) {
         try {
@@ -24,7 +33,6 @@ class FileController {
         }
     }
 
-    // Upload des documents sans instructions
     async uploadDocument(req, res) {
         try {
             const file = req.file;
@@ -44,23 +52,40 @@ class FileController {
             const extractedText = await this.extractTextFromPDF(filePath);
 
             const defaultModel = await Model.findOne({ where: { isDefault: true } });
-            const modelName = defaultModel ? defaultModel.name : 'gemma3:12b';
 
-            // Utiliser le service Ollama pour résumer le document
-            const result = await ollamaService.summarizeDocument(extractedText, modelName);
+            const model = await Model.findOne({ 
+                where: { 
+                    name: defaultModel ? defaultModel.name : 'mistral-large-latest',
+                    isActive: true 
+                } 
+            }) || await Model.findOne({ where: { isDefault: true } });
 
-            if (!result.success) {
+            const prompt = `
+Document : 
+---
+${extractedText}
+---
+
+Génère un JSON structuré :
+{
+    "Résumé": "...",
+    "PointsClés": ["..."],
+    "SuggestionsActions": ["..."]
+}
+            `;
+
+            const rawContent = await this.fetchLLM(prompt, model.name);
+
+            let parsed;
+            try {
+                parsed = JSON.parse(rawContent);
+            } catch (e) {
                 await doc.update({ 
                     status: 'error',
                     processingError: 'JSON invalide retourné par l\'IA'
                 });
-                return res.status(500).json({ 
-                    error: "JSON invalide retourné par l'IA.", 
-                    rawContent: result.raw 
-                });
+                return res.status(500).json({ error: "JSON invalide retourné par l'IA.", rawContent });
             }
-
-            const parsed = result.data;
 
             await doc.update({
                 extractedText: extractedText,
@@ -69,7 +94,7 @@ class FileController {
                 actionSuggestions: JSON.stringify(parsed["SuggestionsActions"]),
                 status: 'processed',
                 processedAt: new Date(),
-                modelUsed: modelName
+                modelUsed: model ? model.name : null
             });
 
             const chat = await Chat.create({
@@ -81,12 +106,12 @@ class FileController {
 
             await Message.create({
                 chatId: chat.id,
-                modelId: defaultModel ? defaultModel.id : null,
+                modelId: model ? model.id : null,
                 content: parsed["Résumé"],
                 type: 'assistant',
                 metadata: {
-                    model: modelName,
-                    tokens: result.raw.length,
+                    model: model ? model.name : null,
+                    tokens: rawContent.length,
                 }
             });
 
@@ -97,6 +122,7 @@ class FileController {
         }
     }
 
+    
     // Upload des documents avec instructions
     async uploadDocumentWithInstructions(req, res) {
         try {
@@ -121,15 +147,16 @@ class FileController {
             const filePath = path.join(process.cwd(), "uploads", file.filename);
             const extractedText = await this.extractTextFromPDF(filePath);
 
-            // Créer un nouveau chat pour cette conversation
-            const chat = await Chat.create({
-                userId: req.user.userId,
-                fileId: doc.id,
-                title: "Chat sur " + file.originalname,
-                status: 'active',
-            });
+            let chat = await Chat.findOne({ where: { id: req.params.chatId ?? null } });
+            if(!chat) {
+                chat = await Chat.create({
+                    userId: req.user.userId,
+                    fileId: doc.id,
+                    title: "Résumé de " + file.originalname,
+                    status: 'active',
+                });
+            }
 
-            // Créer le message utilisateur avec les instructions
             await Message.create({
                 chatId: chat.id,
                 userId: req.user.userId,
@@ -137,41 +164,59 @@ class FileController {
                 type: 'user',
             });
 
-            const defaultModel = await Model.findOne({ where: { isDefault: true } });
-            const finalModelName = modelName || (defaultModel ? defaultModel.name : 'gemma3:12b');
+            const model = await Model.findOne({ 
+                where: { 
+                    name: modelName || 'mistral-large-latest',
+                    isActive: true 
+                } 
+            }) || await Model.findOne({ where: { isDefault: true } });
 
-            // Utiliser le service Ollama pour traiter les instructions
-            const result = await ollamaService.processInstructions(extractedText, instructions, finalModelName);
+            const prompt = `
+Contenu du document :
+---
+${extractedText}
+---
 
-            if (!result.success) {
+Instructions :
+---
+${instructions}
+---
+
+Génère un JSON structuré :
+{
+    "Réponse": "..."
+}
+            `;
+
+            const rawContent = await this.fetchLLM(prompt, model.name);
+
+            let parsed;
+            try {
+                parsed = JSON.parse(rawContent);
+            } catch (e) {
                 await doc.update({ 
                     status: 'error',
                     processingError: 'JSON invalide retourné par l\'IA'
                 });
-                return res.status(500).json({ 
-                    error: "JSON invalide retourné par l'IA.", 
-                    rawContent: result.raw 
-                });
+                return res.status(500).json({ error: "JSON invalide retourné par l'IA.", rawContent });
             }
-
-            const parsed = result.data;
 
             await doc.update({
                 extractedText: extractedText,
                 summary: parsed["Réponse"],
                 status: 'processed',
                 processedAt: new Date(),
-                modelUsed: finalModelName
+                modelUsed: model.name
             });
 
             await Message.create({
                 chatId: chat.id,
-                modelId: defaultModel ? defaultModel.id : null,
+                modelId: model ? model.id : null,
                 content: parsed["Réponse"],
                 type: 'assistant',
                 metadata: {
-                    model: finalModelName,
-                    tokens: result.raw.length,
+                    model: model.name,
+                    tokens: rawContent.length,
                 }
             });
 
@@ -182,7 +227,63 @@ class FileController {
         }
     }
 
+    async fetchLLM(prompt, modelName) {
+        const modelData = await Model.findOne({ 
+            where: { 
+                name: modelName,
+                isActive: true 
+            } 
+        });
 
+        let completion;
+        if (modelData) {
+            switch (modelData.provider) {
+                case "openai":
+                    completion = await this.openai.chat.completions.create({
+                        model: modelData.name,
+                        messages: [{ role: "user", content: prompt }],
+                        ...modelData.configuration
+                    });
+                    break;
+                case "anthropic":
+                    throw new Error('Provider Anthropic non encore implémenté');
+                case "mistral":
+                    completion = await this.mistral.chat.complete({
+                        model: modelData.name,
+                        messages: [{ role: "user", content: prompt }]
+                    });
+                    break;
+                default:
+                    throw new Error(`Provider ${modelData.provider} non supporté`);
+            }
+        } else {
+            completion = await this.mistral.chat.complete({
+                model: 'mistral-large-latest',
+                messages: [{
+                    role: 'user',
+                    content: prompt
+                }]
+            });
+            console.log(completion.choices[0].message.content);
+        }
+        
+        let rawContent = completion.choices[0].message.content;
+        
+        const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)\s*```/);
+        if (jsonMatch) {
+            rawContent = jsonMatch[1].trim();
+        }
+        
+        rawContent = rawContent.trim();
+        
+        try {
+            const parsed = JSON.parse(rawContent);
+            return JSON.stringify(parsed);
+        } catch (e) {
+            console.warn('Contenu JSON potentiellement invalide:', e.message);
+            return rawContent;
+        }
+    }
 }
 
 export default new FileController();

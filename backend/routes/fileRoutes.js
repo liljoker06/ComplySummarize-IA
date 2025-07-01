@@ -27,8 +27,5 @@ router.post('/upload-with-instructions', authMiddleware, upload.single("file"), 
   await fileController.uploadDocumentWithInstructions(req, res);
 });
 
-router.post('/upload-with-instructions/:chatId', authMiddleware, async (req, res) => {
-  await fileController.uploadDocumentWithInstructions(req, res);
-});
 
 export default router;
