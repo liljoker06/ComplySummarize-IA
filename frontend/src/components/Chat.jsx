@@ -4,12 +4,9 @@ import { PiChatCircleTextLight } from 'react-icons/pi'
 import ModelSelector from './ModelSelector'
 import { IoChevronForward } from 'react-icons/io5'
 import { RxDotFilled } from 'react-icons/rx'
-import { useChat } from '../hooks/useChat'
-import { useParams } from 'react-router-dom'
 import FileIndicator from './FileIndicator'
 
-export default function Chat({ toggleSidebar }) {
-    const { chatId } = useParams()
+export default function Chat({ toggleSidebar, chatHook }) {
     const [input, setInput] = useState('')
     const [files, setFiles] = useState([])
     const [selectedModel, setSelectedModel] = useState(null)
@@ -26,11 +23,21 @@ export default function Chat({ toggleSidebar }) {
         sendMessage,
         uploadDocumentWithInstructions,
         clearError
-    } = useChat(chatId)
+    } = chatHook
+
+    // Nettoyer les fichiers en attente quand on change de conversation
+    useEffect(() => {
+        if (currentChat?.file && files.length > 0) {
+            setFiles([])
+        }
+    }, [currentChat?.file])
 
 
 
     useEffect(() => {
+        // Ne pas permettre le drag & drop s'il y a déjà un fichier dans la conversation
+        if (currentChat?.file) return;
+
         const handleDragEnter = (e) => {
             e.preventDefault()
             setIsDragging(true)
@@ -62,7 +69,7 @@ export default function Chat({ toggleSidebar }) {
             document.removeEventListener('dragover', handleDragOver)
             document.removeEventListener('drop', handleDrop)
         }
-    }, [files])
+    }, [files, currentChat?.file])
 
     // Scroll automatique vers le bas
     useEffect(() => {
@@ -137,8 +144,6 @@ export default function Chat({ toggleSidebar }) {
                 <div className="hidden md:block mb-4">
                     <ModelSelector onModelChange={handleModelChange} selectedModel={selectedModel} />
                 </div>
-
-
 
 
                 {/* Messages d'erreur */}
@@ -266,26 +271,33 @@ export default function Chat({ toggleSidebar }) {
                         className="w-full max-w-2xl border rounded-xl p-2 flex items-center gap-2 dark:border-gray-600 bg-white dark:bg-gray-800"
                         onDrop={(e) => {
                             e.preventDefault()
-                            const newFiles = [...files, ...Array.from(e.dataTransfer.files)]
-                            setFiles(newFiles)
+                            // Ne pas permettre le drop s'il y a déjà un fichier
+                            if (!currentChat?.file) {
+                                const newFiles = [...files, ...Array.from(e.dataTransfer.files)]
+                                setFiles(newFiles)
+                            }
                         }}
                         onDragOver={(e) => e.preventDefault()}
                     >
-                        {/* Upload */}
-                        <button
-                            onClick={() => fileInputRef.current.click()}
-                            className="text-gray-600 dark:text-gray-300 hover:text-blue-600"
-                            title="Ajouter un fichier"
-                        >
-                            <FiUpload size={18} />
-                        </button>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            multiple
-                            hidden
-                            onChange={handleFiles}
-                        />
+                        {/* Upload - seulement si pas de fichier dans la conversation */}
+                        {!currentChat?.file && (
+                            <>
+                                <button
+                                    onClick={() => fileInputRef.current.click()}
+                                    className="text-gray-600 dark:text-gray-300 hover:text-blue-600"
+                                    title="Ajouter un fichier"
+                                >
+                                    <FiUpload size={18} />
+                                </button>
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    multiple
+                                    hidden
+                                    onChange={handleFiles}
+                                />
+                            </>
+                        )}
 
                         {/* Texte */}
                         <textarea

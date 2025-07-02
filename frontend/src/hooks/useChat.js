@@ -159,7 +159,12 @@ export const useChat = (initialChatId = null) => {
     }, [currentChat]);
 
     const selectChat = useCallback((chat) => {
-        if (chat && chat.id !== currentChat?.id) {
+        if (chat === null) {
+            // Réinitialiser pour une nouvelle conversation
+            setCurrentChat(null);
+            setMessages([]);
+            setError(null);
+        } else if (chat && chat.id !== currentChat?.id) {
             loadChat(chat.id);
         }
     }, [currentChat, loadChat]);
@@ -171,6 +176,11 @@ export const useChat = (initialChatId = null) => {
     useEffect(() => {
         if (initialChatId) {
             loadChat(initialChatId);
+        } else if (initialChatId === null || initialChatId === undefined) {
+            // Réinitialiser quand on navigue vers une nouvelle conversation
+            setCurrentChat(null);
+            setMessages([]);
+            setError(null);
         }
     }, [initialChatId, loadChat]);
 

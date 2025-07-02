@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { IoChevronDown, IoCheckmark, IoRefresh } from 'react-icons/io5'
+import { FiCloud, FiCpu } from 'react-icons/fi'
+import { SiOpenai, SiOllama } from 'react-icons/si'
 import { useModels } from '../hooks/useModels'
 
 export default function ModelSelector({ onModelChange, selectedModel = null }) {
@@ -10,12 +12,12 @@ export default function ModelSelector({ onModelChange, selectedModel = null }) {
     selectedModel: hookSelectedModel, 
     isLoading, 
     selectModel, 
-    getAvailableOllamaModels,
+    getAllActiveModels,
     loadModels 
   } = useModels()
 
-  const availableModels = getAvailableOllamaModels()
-  const currentSelected = selectedModel || hookSelectedModel || defaultModel?.name || 'gemma3:12b'
+  const availableModels = getAllActiveModels()
+  const currentSelected = selectedModel || hookSelectedModel || defaultModel?.name || 'gemma3:1b'
 
   useEffect(() => {
     if (onModelChange && currentSelected) {
@@ -31,83 +33,127 @@ export default function ModelSelector({ onModelChange, selectedModel = null }) {
     setIsOpen(false)
   }
 
-  const formatModelSize = (size) => {
-    if (!size) return ''
-    const gb = (size / (1024 * 1024 * 1024)).toFixed(1)
-    return `${gb} GB`
+  const getProviderIcon = (provider) => {
+    switch (provider) {
+      case 'openai':
+        return <SiOpenai className="text-green-600" size={16} />
+      case 'mistral':
+        return <FiCloud className="text-orange-600" size={16} />
+      case 'ollama':
+        return <SiOllama className="text-gray-800 dark:text-white" size={16} />
+      case 'anthropic':
+        return <FiCloud className="text-blue-600" size={16} />
+      case 'google':
+        return <FiCloud className="text-red-600" size={16} />
+      case 'huggingface':
+        return <FiCloud className="text-yellow-600" size={16} />
+      default:
+        return <FiCpu className="text-gray-600" size={16} />
+    }
   }
 
+  const getProviderName = (provider) => {
+    const names = {
+      openai: 'OpenAI',
+      mistral: 'Mistral',
+      ollama: 'Ollama',
+      anthropic: 'Anthropic',
+      google: 'Google',
+      huggingface: 'HF'
+    }
+    return names[provider] || provider
+  }
+
+  const currentModel = availableModels.find(m => m.name === currentSelected)
+
   return (
-    <div className="relative w-64 text-sm">
+    <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        disabled={isLoading}
-        className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 px-4 py-2 rounded-lg flex justify-between items-center hover:bg-gray-200 dark:hover:bg-gray-700 transition-all disabled:opacity-50"
+        className="flex items-center justify-between w-full px-3 py-2 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
       >
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-800 dark:text-white">
-            {currentSelected}
+          {currentModel && getProviderIcon(currentModel.provider)}
+          <span className="truncate">
+            {currentModel ? currentModel.displayName : currentSelected}
           </span>
-          {defaultModel?.name === currentSelected && (
-            <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded">
-              Par défaut
+          {currentModel?.isDefault && (
+            <span className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 px-1.5 py-0.5 rounded">
+              Défaut
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
-          {isLoading && <IoRefresh className="animate-spin text-gray-500 dark:text-gray-300" size={14} />}
-          <IoChevronDown className="text-gray-500 dark:text-gray-300" />
+          {isLoading && <IoRefresh className="animate-spin text-gray-400" size={14} />}
+          <IoChevronDown className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} size={16} />
         </div>
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-full bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg shadow-lg z-10 overflow-hidden">
-          <div className="p-2 max-h-64 overflow-y-auto">
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                loadModels()
-              }}
-              className="w-full flex items-center gap-2 p-2 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg mb-2"
-            >
-              <IoRefresh className={isLoading ? 'animate-spin' : ''} />
-              Actualiser les modèles
-            </button>
-
+        <div className="absolute top-full mt-1 left-0 right-0 z-50 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+          <div className="p-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                Modèles disponibles ({availableModels.length})
+              </span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  loadModels()
+                }}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                title="Actualiser"
+              >
+                <IoRefresh size={14} />
+              </button>
+            </div>
+            
             {availableModels.length === 0 ? (
               <div className="p-3 text-center text-gray-500 dark:text-gray-400">
-                <p className="text-sm">Aucun modèle Ollama détecté</p>
-                <p className="text-xs mt-1">Vérifiez qu'Ollama est démarré</p>
+                <p className="text-sm">Aucun modèle actif détecté</p>
+                <p className="text-xs mt-1">Vérifiez la configuration dans les paramètres</p>
               </div>
             ) : (
-              availableModels.map((model) => (
-                <div
-                  key={model.name}
-                  onClick={() => handleModelSelect(model.name)}
-                  className={`flex items-start gap-2 p-3 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${
-                    currentSelected === model.name ? 'bg-gray-100 dark:bg-gray-700' : ''
-                  }`}
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-900 dark:text-white">{model.name}</p>
-                      {defaultModel?.name === model.name && (
-                        <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300 px-1.5 py-0.5 rounded">
-                          Défaut
-                        </span>
-                      )}
+              <div className="space-y-1">
+                {availableModels.map((model) => (
+                  <div
+                    key={model.id}
+                    onClick={() => handleModelSelect(model.name)}
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-all ${
+                      currentSelected === model.name ? 'bg-gray-100 dark:bg-gray-700' : ''
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      {getProviderIcon(model.provider)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900 dark:text-white truncate">
+                            {model.displayName}
+                          </p>
+                          {model.isDefault && (
+                            <span className="text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 px-1.5 py-0.5 rounded flex-shrink-0">
+                              Défaut
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {getProviderName(model.provider)}
+                          </span>
+                          {model.description && (
+                            <span className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                              {model.description}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    {model.size && (
-                      <p className="text-gray-600 dark:text-gray-400 text-xs">
-                        Taille: {formatModelSize(model.size)}
-                      </p>
+                    {currentSelected === model.name && (
+                      <IoCheckmark className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
                     )}
                   </div>
-                  {currentSelected === model.name && (
-                    <IoCheckmark className="text-blue-600 dark:text-blue-400 mt-1" />
-                  )}
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         </div>

@@ -88,6 +88,22 @@ const File = sequelize.define('File', {
     type: DataTypes.DATE,
     allowNull: true,
   },
+  modelUsed: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Nom du modèle IA utilisé pour le traitement'
+  },
+  piiDetected: {
+    type: DataTypes.BOOLEAN,
+    allowNull: true,
+    defaultValue: false,
+    comment: 'Indique si des PII ont été détectées et anonymisées'
+  },
+  piiStats: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    comment: 'Statistiques d\'anonymisation des données personnelles'
+  },
   createdAt: {
     type: DataTypes.DATE,
     defaultValue: DataTypes.NOW,
