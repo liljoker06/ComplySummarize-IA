@@ -1,18 +1,19 @@
 import { IoChevronBack, IoChevronForward } from 'react-icons/io5'
 import { FiPlus, FiTrash2, FiArchive, FiLoader, FiPaperclip, FiLogOut, FiUser } from 'react-icons/fi'
 import { PiChatCircleTextLight } from 'react-icons/pi'
-import { useChat } from '../hooks/useChat'
 import { useAuth } from '../hooks/useAuth.jsx'
 import { useNavigate, useParams } from 'react-router-dom'
 import FileIndicator from './FileIndicator'
 
-export default function Sidebar({ isOpen, toggleSidebar }) {
+export default function Sidebar({ isOpen, toggleSidebar, chatHook }) {
   const navigate = useNavigate()
   const { chatId } = useParams()
   const { user, logout } = useAuth()
-  const { chats, isLoading, deleteChat, archiveChat, selectChat } = useChat()
+  const { chats, isLoading, deleteChat, archiveChat, selectChat } = chatHook
 
   const handleNewConversation = () => {
+    // Réinitialiser l'état du chat actuel
+    selectChat(null)
     navigate('/conversation')
   }
 

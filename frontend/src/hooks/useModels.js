@@ -3,8 +3,19 @@ import apiService from '../services/api';
 
 export const useModels = () => {
     const [models, setModels] = useState({
-        ollama: [],
-        database: []
+        database: {
+            all: [],
+            active: [],
+            byProvider: {
+                ollama: [],
+                mistral: [],
+                openai: [],
+                anthropic: [],
+                google: [],
+                huggingface: []
+            }
+        },
+        ollama: []
     });
     const [defaultModel, setDefaultModel] = useState(null);
     const [selectedModel, setSelectedModel] = useState(null);
@@ -16,7 +27,10 @@ export const useModels = () => {
             setIsLoading(true);
             setError(null);
             const response = await apiService.getAvailableModels();
-            setModels(response.models || { ollama: [], database: [] });
+            setModels(response.models || {
+                database: { all: [], active: [], byProvider: {} },
+                ollama: []
+            });
         } catch (err) {
             setError(err.message);
             console.error('Erreur lors du chargement des modèles:', err);
@@ -24,6 +38,24 @@ export const useModels = () => {
             setIsLoading(false);
         }
     }, []);
+
+    const syncModels = useCallback(async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+            const response = await apiService.syncModels();
+            console.log('Synchronisation terminée:', response.message);
+            // Recharger les modèles après synchronisation
+            await loadModels();
+            return response;
+        } catch (err) {
+            setError(err.message);
+            console.error('Erreur lors de la synchronisation des modèles:', err);
+            throw err;
+        } finally {
+            setIsLoading(false);
+        }
+    }, [loadModels]);
 
     const loadDefaultModel = useCallback(async () => {
         try {
@@ -36,7 +68,7 @@ export const useModels = () => {
         } catch (err) {
             console.error('Erreur lors du chargement du modèle par défaut:', err);
             if (!selectedModel) {
-                setSelectedModel('gemma3:12b');
+                setSelectedModel('gemma3:1b');
             }
         }
     }, [selectedModel]);
@@ -47,6 +79,8 @@ export const useModels = () => {
             const response = await apiService.setDefaultModel(modelName);
             setDefaultModel(response.model);
             setSelectedModel(modelName);
+            // Recharger les modèles pour mettre à jour les statuts
+            await loadModels();
         } catch (err) {
             setError(err.message);
             console.error('Erreur lors de la définition du modèle par défaut:', err);
@@ -54,7 +88,24 @@ export const useModels = () => {
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [loadModels]);
+
+    const toggleModelStatus = useCallback(async (modelId, isActive) => {
+        try {
+            setIsLoading(true);
+            const response = await apiService.toggleModelStatus(modelId, isActive);
+            console.log(response.message);
+            // Recharger les modèles pour mettre à jour les statuts
+            await loadModels();
+            return response;
+        } catch (err) {
+            setError(err.message);
+            console.error('Erreur lors du changement de statut du modèle:', err);
+            throw err;
+        } finally {
+            setIsLoading(false);
+        }
+    }, [loadModels]);
 
     const checkModelAvailability = useCallback(async (modelName) => {
         try {
@@ -75,6 +126,21 @@ export const useModels = () => {
         }));
     }, [models.ollama]);
 
+    const getAllActiveModels = useCallback(() => {
+        return models.database.active.map(model => ({
+            id: model.id,
+            name: model.name,
+            displayName: model.displayName,
+            provider: model.provider,
+            isDefault: model.isDefault,
+            description: model.description
+        }));
+    }, [models.database.active]);
+
+    const getModelsByProvider = useCallback((provider) => {
+        return models.database.byProvider[provider] || [];
+    }, [models.database.byProvider]);
+
     const selectModel = useCallback((modelName) => {
         setSelectedModel(modelName);
     }, []);
@@ -92,12 +158,17 @@ export const useModels = () => {
         error,
         
         loadModels,
+        syncModels,
         loadDefaultModel,
         setNewDefaultModel,
+        toggleModelStatus,
         checkModelAvailability,
         selectModel,
         
         getAvailableOllamaModels,
+        getAllActiveModels,
+        getModelsByProvider,
+        
         clearError: () => setError(null),
     };
 }; 

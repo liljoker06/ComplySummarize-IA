@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { IoChevronBackOutline } from 'react-icons/io5'
 import SettingGeneral from '../components/settings/SettingGeneral'
 import ApiPage from '../components/settings/ApiPage'
+import ModelsPage from '../components/settings/ModelsPage'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general')
@@ -10,6 +11,7 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'general', label: 'Général' },
+    { id: 'models', label: 'Modèles' },
     { id: 'api', label: 'API' },
   ]
 
@@ -46,6 +48,7 @@ export default function SettingsPage() {
         {/* Contenu */}
         <div>
           {activeTab === 'general' && <SettingGeneral />}
+          {activeTab === 'models' && <ModelsPage />}
           {activeTab === 'api' && <ApiPage />}
         </div>
       </div>
