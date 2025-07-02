@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
 import { FiSend, FiUpload, FiPaperclip, FiX, FiAlertCircle } from 'react-icons/fi'
 import { PiChatCircleTextLight } from 'react-icons/pi'
+import { IoSettingsOutline } from 'react-icons/io5'
 import ModelSelector from './ModelSelector'
 import { IoChevronForward } from 'react-icons/io5'
 import { RxDotFilled } from 'react-icons/rx'
 import FileIndicator from './FileIndicator'
+import { Link } from 'react-router-dom'
 
 export default function Chat({ toggleSidebar, chatHook }) {
     const [input, setInput] = useState('')
@@ -127,22 +129,36 @@ export default function Chat({ toggleSidebar, chatHook }) {
             <div className="flex-1 flex flex-col px-6 py-4 ">
 
                 {/* Bouton pour ouvrir la sidebar (visible en mobile uniquement) */}
-                {/* Chevron + Sélecteur dans la même ligne */}
+               {/* Mobile */}
                 <div className="md:hidden mb-4 flex items-center gap-2">
-                    <button
-                        onClick={toggleSidebar}
-                        className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
-                    >
-                        <IoChevronForward size={20} />
-                    </button>
+                <button
+                    onClick={toggleSidebar}
+                    className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
+                >
+                    <IoChevronForward size={20} />
+                </button>
+                <div className="flex-1">
+                    <ModelSelector onModelChange={handleModelChange} selectedModel={selectedModel} />
+                </div>
+                <Link
+                    to="/settings"
+                    className="p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
+                >
+                    <IoSettingsOutline size={20} />
+                </Link>
+                </div>
+
+                {/* Desktop */}
+                <div className="hidden md:flex mb-4 items-center justify-between">
                     <div className="flex-1">
                         <ModelSelector onModelChange={handleModelChange} selectedModel={selectedModel} />
                     </div>
-                </div>
-
-                {/* Desktop : Select seul */}
-                <div className="hidden md:block mb-4">
-                    <ModelSelector onModelChange={handleModelChange} selectedModel={selectedModel} />
+                    <Link
+                        to="/settings"
+                        className="ml-4 p-2 rounded-full bg-white dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 shadow"
+                    >
+                        <IoSettingsOutline size={20} />
+                    </Link>
                 </div>
 
 
