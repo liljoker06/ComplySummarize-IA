@@ -68,6 +68,12 @@ class ApiService {
         return this.request('/models');
     }
 
+    async syncModels() {
+        return this.request('/models/sync', {
+            method: 'POST',
+        });
+    }
+
     async getDefaultModel() {
         return this.request('/models/default');
     }
@@ -81,6 +87,13 @@ class ApiService {
 
     async checkModel(modelName) {
         return this.request(`/models/check/${encodeURIComponent(modelName)}`);
+    }
+
+    async toggleModelStatus(modelId, isActive) {
+        return this.request(`/models/${modelId}/toggle`, {
+            method: 'PATCH',
+            body: JSON.stringify({ isActive }),
+        });
     }
 
     async uploadDocument(file) {

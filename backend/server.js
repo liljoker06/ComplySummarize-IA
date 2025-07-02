@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { sequelize } from './config/index.js';
 import { skeletonRoutes, authRoutes, fileRoutes, chatRoutes, modelRoutes } from './routes/index.js';
+import modelSyncService from './services/modelSyncService.js';
 
 dotenv.config();
 
@@ -32,6 +33,10 @@ const startServer = async () => {
     // Sync models (create tables if they don't exist)
     await sequelize.sync({ force: false });
     console.log('✅ Database synchronized');
+    
+    // Synchroniser les modèles IA disponibles
+    console.log('🔄 Synchronisation des modèles IA...');
+    await modelSyncService.syncModelsToDatabase();
     
     app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
