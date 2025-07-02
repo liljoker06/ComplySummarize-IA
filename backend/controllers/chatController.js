@@ -1,10 +1,86 @@
 import { Chat, Message, File, Model } from '../models/index.js';
 import ollamaService from '../services/ollamaService.js';
+import systemPromptService from '../services/systemPromptService.js';
+import { OpenAI } from 'openai';
+import { Mistral } from '@mistralai/mistralai';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
 class ChatController {
+    constructor() {
+        // Initialiser les clients API pour les providers externes
+        this.openai = new OpenAI({
+            apiKey: process.env.OPENAI_API_KEY,
+        });
+        this.mistral = new Mistral({
+            apiKey: process.env.MISTRAL_API_KEY,
+        });
+    }
+
+    async sendMessageToLLM(messages, model) {
+        try {
+            let completion;
+            
+            switch (model.provider) {
+                case "ollama":
+                    // Pour Ollama, utiliser le service existant mais avec nos messages
+                    const response = await ollamaService.chat(model.name, messages);
+                    const content = response?.message?.content || '';
+                    return {
+                        success: true,
+                        content: content,
+                        raw: content
+                    };
+
+                case "openai":
+                    completion = await this.openai.chat.completions.create({
+                        model: model.name,
+                        messages: messages,
+                        ...model.configuration
+                    });
+                    const openaiContent = completion?.choices?.[0]?.message?.content || '';
+                    return {
+                        success: true,
+                        content: openaiContent,
+                        raw: openaiContent
+                    };
+
+                case "mistral":
+                    completion = await this.mistral.chat.complete({
+                        model: model.name,
+                        messages: messages
+                    });
+                    const mistralContent = completion?.choices?.[0]?.message?.content || '';
+                    return {
+                        success: true,
+                        content: mistralContent,
+                        raw: mistralContent
+                    };
+
+                case "anthropic":
+                    throw new Error('Provider Anthropic non encore implémenté');
+
+                case "google":
+                    throw new Error('Provider Google non encore implémenté');
+
+                case "huggingface":
+                    throw new Error('Provider HuggingFace non encore implémenté');
+
+                default:
+                    throw new Error(`Provider ${model.provider} non supporté`);
+            }
+
+        } catch (error) {
+            console.error('Erreur lors de l\'appel au LLM:', error);
+            return {
+                success: false,
+                error: error.message,
+                content: `Erreur: ${error.message}`,
+                raw: error.message
+            };
+        }
+    }
 
     // Créer un nouveau chat
     async createChat(req, res) {
@@ -143,30 +219,53 @@ class ChatController {
                 type: 'user'
             });
 
-            const defaultModel = await Model.findOne({ where: { isDefault: true } });
-            const finalModelName = modelName || (defaultModel ? defaultModel.name : 'gemma3:1b');
+            // Trouver le modèle à utiliser
+            const model = await Model.findOne({ 
+                where: { 
+                    name: modelName || undefined,
+                    isActive: true 
+                } 
+            }) || await Model.findOne({ where: { isDefault: true } });
 
-            const conversationHistory = ollamaService.buildConversationHistory(
+            if (!model) {
+                throw new Error('Aucun modèle actif trouvé');
+            }
+
+            // Construire l'historique de conversation avec le system prompt
+            const conversationHistory = systemPromptService.buildConversationHistory(
                 previousMessages, 
                 chat.file.extractedText
             );
 
-            const response = await ollamaService.continueConversation(
-                conversationHistory,
-                content,
-                finalModelName
-            );
+            // Ajouter le nouveau message utilisateur
+            conversationHistory.push({
+                role: 'user',
+                content: content
+            });
 
-            let aiResponse = response.message.content;
+            // Envoyer au LLM approprié
+            const response = await this.sendMessageToLLM(conversationHistory, model);
+
+            if (!response.success) {
+                throw new Error(response.error || 'Erreur lors de la génération de la réponse');
+            }
+
+            // Vérifier que le contenu n'est pas null ou vide
+            const responseContent = response.content || response.raw || 'Désolé, je n\'ai pas pu générer une réponse.';
+            
+            if (!responseContent || responseContent.trim() === '') {
+                throw new Error('La réponse générée est vide');
+            }
 
             const assistantMessage = await Message.create({
                 chatId: chatId,
-                modelId: defaultModel ? defaultModel.id : null,
-                content: aiResponse,
+                modelId: model.id,
+                content: responseContent.trim(),
                 type: 'assistant',
                 metadata: {
-                    model: finalModelName,
-                    tokens: response.message.content.length,
+                    model: model.name,
+                    provider: model.provider,
+                    tokens: responseContent.length,
                     conversationLength: conversationHistory.length + 1
                 }
             });
@@ -190,8 +289,6 @@ class ChatController {
             res.status(500).json({ error: error.message });
         }
     }
-
-
 
     async deleteChat(req, res) {
         try {

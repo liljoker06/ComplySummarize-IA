@@ -24,17 +24,14 @@ app.use('/api/files', fileRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/models', modelRoutes);
 
-// Database connection and sync
 const startServer = async () => {
   try {
     await sequelize.authenticate();
     console.log('✅ Database connected successfully');
     
-    // Sync models (create tables if they don't exist)
     await sequelize.sync({ force: false });
     console.log('✅ Database synchronized');
     
-    // Synchroniser les modèles IA disponibles
     console.log('🔄 Synchronisation des modèles IA...');
     await modelSyncService.syncModelsToDatabase();
     

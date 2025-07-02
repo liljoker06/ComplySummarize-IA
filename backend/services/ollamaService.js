@@ -1,63 +1,10 @@
 import { Ollama } from 'ollama';
-import dotenv from 'dotenv';
-
-dotenv.config();
 
 class OllamaService {
     constructor() {
         this.ollama = new Ollama({ 
             host: process.env.OLLAMA_HOST || 'http://127.0.0.1:11434' 
         });
-    }
-
-    getSystemPrompt() {
-        return `Tu es un assistant IA spécialisé dans l'analyse et la discussion de documents. 
-
-Tes caractéristiques :
-- Tu es précis, analytique et pédagogique
-- Tu réponds toujours en français
-- Tu peux faire référence au contenu du document et aux échanges précédents
-- Tu structures tes réponses de manière claire et organisée
-- Tu peux extraire des informations, résumer, expliquer et répondre aux questions
-- Si on te demande du JSON, tu respectes le format demandé
-
-Instructions spéciales :
-- Quand tu reçois un document, tu l'analyses en profondeur
-- Tu peux faire des liens entre différentes parties du document
-- Tu adaptes ton niveau de détail selon la question posée
-- Tu peux proposer des actions ou des suggestions pertinentes
-
-Reste toujours professionnel et utile dans tes réponses.`;
-    }
-
-    buildConversationHistory(messages, documentText, customSystemPrompt = null) {
-        const history = [];
-        
-        const systemPrompt = customSystemPrompt || this.getSystemPrompt();
-        history.push({
-            role: 'system',
-            content: systemPrompt
-        });
-
-        if (documentText) {
-            const truncatedText = documentText.length > 4000 
-                ? documentText.substring(0, 4000) + '...[document tronqué]'
-                : documentText;
-                
-            history.push({
-                role: 'system',
-                content: `CONTENU DU DOCUMENT À ANALYSER :\n\n${truncatedText}`
-            });
-        }
-
-        for (const message of messages) {
-            history.push({
-                role: message.type === 'user' ? 'user' : 'assistant',
-                content: message.content
-            });
-        }
-
-        return history;
     }
 
     async chat(modelName, messages, options = {}) {
@@ -77,27 +24,48 @@ Reste toujours professionnel et utile dans tes réponses.`;
     }
 
     async chatWithJsonResponse(modelName, messages, jsonFormat = null) {
-        const options = { format: 'json' };
-        
-        // Ajouter des instructions JSON au dernier message si un format est spécifié
-        if (jsonFormat && messages.length > 0) {
-            const lastMessage = messages[messages.length - 1];
-            if (lastMessage.role === 'user') {
-                lastMessage.content += `\n\nRéponds UNIQUEMENT avec un JSON valide suivant cette structure :\n${JSON.stringify(jsonFormat, null, 2)}`;
+        try {
+            const fullMessages = [...messages];
+            
+            if (jsonFormat && fullMessages.length > 0) {
+                const lastMessage = fullMessages[fullMessages.length - 1];
+                if (lastMessage.role === 'user') {
+                    lastMessage.content += `\n\nIMPORTANT: Réponds UNIQUEMENT avec un JSON valide suivant cette structure exacte :\n${JSON.stringify(jsonFormat, null, 2)}\n\nNe pas ajouter d'explication, juste le JSON.`;
+                }
             }
-        }
 
-        const response = await this.chat(modelName, messages, options);
-        return this.parseJsonResponse(response.message.content);
+            const options = { format: 'json' };
+            const response = await this.chat(modelName, fullMessages, options);
+            
+            return this.parseJsonResponse(response?.message?.content || '');
+        } catch (error) {
+            return {
+                success: false,
+                error: error.message,
+                raw: error.message
+            };
+        }
     }
 
     parseJsonResponse(rawContent) {
+        if (!rawContent || rawContent.trim() === '') {
+            return {
+                success: false,
+                error: 'Réponse vide',
+                raw: rawContent || ''
+            };
+        }
+
         let cleanedContent = rawContent.trim();
         
-        // Extraire le JSON des balises markdown si présentes
         const jsonMatch = cleanedContent.match(/```json\s*([\s\S]*?)\s*```/);
         if (jsonMatch) {
             cleanedContent = jsonMatch[1].trim();
+        }
+
+        const jsonObjectMatch = cleanedContent.match(/\{[\s\S]*\}/);
+        if (jsonObjectMatch) {
+            cleanedContent = jsonObjectMatch[0];
         }
 
         try {
@@ -108,7 +76,6 @@ Reste toujours professionnel et utile dans tes réponses.`;
                 raw: rawContent
             };
         } catch (error) {
-            console.warn('Contenu JSON invalide:', error.message);
             return {
                 success: false,
                 error: error.message,
@@ -119,10 +86,6 @@ Reste toujours professionnel et utile dans tes réponses.`;
 
     async summarizeDocument(documentText, modelName = 'gemma3:1b') {
         const messages = [
-            {
-                role: 'system',
-                content: this.getSystemPrompt()
-            },
             {
                 role: 'user',
                 content: `Analyse ce document et génère un résumé structuré :\n\n${documentText}`
@@ -141,16 +104,8 @@ Reste toujours professionnel et utile dans tes réponses.`;
     async processInstructions(documentText, instructions, modelName = 'gemma3:1b') {
         const messages = [
             {
-                role: 'system',
-                content: this.getSystemPrompt()
-            },
-            {
-                role: 'system',
-                content: `CONTENU DU DOCUMENT :\n\n${documentText.substring(0, 4000)}...`
-            },
-            {
                 role: 'user',
-                content: instructions
+                content: `Contenu du document :\n\n${documentText.substring(0, 4000)}...\n\nInstructions :\n${instructions}`
             }
         ];
 
@@ -158,7 +113,29 @@ Reste toujours professionnel et utile dans tes réponses.`;
             "Réponse": "Réponse détaillée aux instructions"
         };
 
-        return await this.chatWithJsonResponse(modelName, messages, jsonFormat);
+        let result = await this.chatWithJsonResponse(modelName, messages, jsonFormat);
+        
+        if (!result.success || !result.data || Object.keys(result.data).length === 0) {
+            const fallbackMessages = [
+                {
+                    role: 'user',
+                    content: `Contenu du document :\n\n${documentText.substring(0, 4000)}...\n\nInstructions :\n${instructions}\n\nRéponds de manière détaillée et structurée.`
+                }
+            ];
+            
+            const fallbackResponse = await this.chat(modelName, fallbackMessages);
+            const content = fallbackResponse?.message?.content || '';
+            
+            if (content.trim()) {
+                return {
+                    success: true,
+                    data: { "Réponse": content.trim() },
+                    raw: content
+                };
+            }
+        }
+
+        return result;
     }
 
     async continueConversation(conversationHistory, newMessage, modelName = 'gemma3:1b') {

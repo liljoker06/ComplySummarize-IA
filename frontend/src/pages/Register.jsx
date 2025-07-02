@@ -216,18 +216,18 @@ export default function Register() {
 
             {/* Email */}
             <div className="mb-4">
-              <input
-                type="email"
-                placeholder={t[lang].email}
+            <input
+              type="email"
+              placeholder={t[lang].email}
                 className={`w-full px-4 py-2 border rounded bg-white dark:bg-gray-700 text-sm ${
                   validationErrors.email 
                     ? 'border-red-500 dark:border-red-500' 
                     : 'border-gray-300 dark:border-gray-600'
                 }`}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
               {validationErrors.email && (
                 <p className="text-xs text-red-500 mt-1">{validationErrors.email}</p>
               )}
@@ -235,18 +235,18 @@ export default function Register() {
 
             {/* Mot de passe */}
             <div className="mb-4 relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder={t[lang].password}
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder={t[lang].password}
                 className={`w-full px-4 py-2 border rounded bg-white dark:bg-gray-700 text-sm ${
                   validationErrors.password 
                     ? 'border-red-500 dark:border-red-500' 
                     : 'border-gray-300 dark:border-gray-600'
                 }`}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
               <button
                 type="button"
                 className="absolute right-3 top-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
@@ -261,18 +261,18 @@ export default function Register() {
 
             {/* Confirmer mot de passe */}
             <div className="mb-4">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder={t[lang].confirmPassword}
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder={t[lang].confirmPassword}
                 className={`w-full px-4 py-2 border rounded bg-white dark:bg-gray-700 text-sm ${
                   validationErrors.confirmPassword 
                     ? 'border-red-500 dark:border-red-500' 
                     : 'border-gray-300 dark:border-gray-600'
                 }`}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-              />
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+            />
               {validationErrors.confirmPassword && (
                 <p className="text-xs text-red-500 mt-1">{validationErrors.confirmPassword}</p>
               )}
