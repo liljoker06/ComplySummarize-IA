@@ -1,64 +1,36 @@
-# ========== FRONTEND BUILD (React/Vite) ==========
-FROM node:18-alpine AS frontend-builder
+# ========== Étape 1 : Build du frontend ==========
+FROM node:18-alpine AS builder
 
-WORKDIR /app/frontend
-
-COPY frontend/package*.json ./
-RUN npm install
-COPY frontend/ .
-RUN npm run build
-
-# ========== BACKEND + OLLAMA BASE ==========
-FROM node:18-slim AS backend-base
-
-RUN apt-get update && apt-get install -y \
-    curl \
-    bash \
-    && rm -rf /var/lib/apt/lists/*
-
+# Répertoire de travail
 WORKDIR /app
 
-COPY backend/package*.json ./
-RUN npm ci --only=production
-COPY backend/ .
-RUN mkdir -p uploads
+# Copier les fichiers de dépendances
+COPY frontend/package*.json ./
 
-# ========== OLLAMA INSTALL ==========
-FROM backend-base AS backend-ollama
+# Installer les dépendances
+RUN npm install
 
-# Installe Ollama
-RUN curl -fsSL https://ollama.ai/install.sh | sh
+# Copier le reste du code source
+COPY frontend/ .
 
-# Crée le script de démarrage
-RUN echo '#!/bin/bash' > /app/start.sh && \
-    echo '' >> /app/start.sh && \
-    echo 'trap "kill 0" SIGINT SIGTERM' >> /app/start.sh && \
-    echo 'ollama serve & OLLAMA_PID=$!' >> /app/start.sh && \
-    echo 'while ! curl -s http://localhost:11434/api/tags > /dev/null; do sleep 2; done' >> /app/start.sh && \
-    echo 'ollama pull gemma2:2b' >> /app/start.sh && \
-    echo 'ollama pull llama3.2:1b' >> /app/start.sh && \
-    echo 'npm start & NODE_PID=$!' >> /app/start.sh && \
-    echo 'wait $OLLAMA_PID $NODE_PID' >> /app/start.sh
+# Passer la variable d'API à Vite
+ARG VITE_API_URL=http://localhost:5000/api
+ENV VITE_API_URL=$VITE_API_URL
 
-RUN chmod +x /app/start.sh
+# Construire l'application
+RUN npm run build
 
-# ========== FINAL STAGE ==========
+# ========== Étape 2 : Serveur de production avec Nginx ==========
 FROM nginx:alpine
 
-# --- FRONTEND ---
-COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
+# Copier la configuration Nginx personnalisée
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
-# --- BACKEND + OLLAMA ---
-COPY --from=backend-ollama /app /app
-# COPY --from=backend-ollama /root/.ollama /root/.ollama
+# Copier les fichiers buildés dans le répertoire statique de Nginx
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Définir la variable d'environnement
-ENV NODE_ENV=production
-ENV OLLAMA_HOST=0.0.0.0:11434
+# Exposer le port HTTP
+EXPOSE 80
 
-# Exposer les ports (80 pour frontend, 5000 pour backend, 11434 pour Ollama)
-EXPOSE 80 5000 11434
-
-# Démarrage des services backend + Ollama + frontend
-CMD ["/app/start.sh"]
+# Démarrer Nginx
+CMD ["nginx", "-g", "daemon off;"]
