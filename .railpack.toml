@@ -1,0 +1,3 @@
+[build]
+language = "Shell"
+directory = "docker"
