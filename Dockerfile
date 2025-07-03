@@ -51,7 +51,7 @@ COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
 # --- BACKEND + OLLAMA ---
 COPY --from=backend-ollama /app /app
-COPY --from=backend-ollama /root/.ollama /root/.ollama
+# COPY --from=backend-ollama /root/.ollama /root/.ollama
 
 # Définir la variable d'environnement
 ENV NODE_ENV=production
