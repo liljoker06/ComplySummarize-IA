@@ -1,3 +1,9 @@
 [build]
 language = "Shell"
 directory = "docker"
+
+[build.command]
+command = "docker compose --env-file docker.env -f docker-compose.yaml build"
+
+[start]
+command = "docker compose --env-file docker.env -f docker-compose.yaml up"
