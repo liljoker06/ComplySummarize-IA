@@ -3,12 +3,13 @@ import { FiSend, FiUpload, FiPaperclip, FiX, FiAlertCircle } from 'react-icons/f
 import { PiChatCircleTextLight } from 'react-icons/pi'
 import { IoSettingsOutline } from 'react-icons/io5'
 import ModelSelector from './ModelSelector'
-import { IoChevronForward } from 'react-icons/io5'
+import { IoChevronForward, IoSettingsOutline } from 'react-icons/io5'
 import { RxDotFilled } from 'react-icons/rx'
 import FileIndicator from './FileIndicator'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth.jsx'
 import logoComplySummarize from '../assets/logo_complysummarize.png'
+
 
 export default function Chat({ toggleSidebar, chatHook }) {
     const [input, setInput] = useState('')
@@ -162,6 +163,7 @@ export default function Chat({ toggleSidebar, chatHook }) {
             )}
 
             <div className="flex-1 flex flex-col px-6 py-4 ">
+
 
                 {/* Bouton pour ouvrir la sidebar (visible en mobile uniquement) */}
                {/* Mobile */}
