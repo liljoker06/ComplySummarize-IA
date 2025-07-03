@@ -14,7 +14,7 @@ RUN npm install
 COPY frontend/ .
 
 # Passer la variable d'API à Vite
-ARG VITE_API_URL=http://localhost:5000/api
+ARG VITE_API_URL=https://complysummarize-ia.up.railway.app/api
 ENV VITE_API_URL=$VITE_API_URL
 
 # Construire l'application
