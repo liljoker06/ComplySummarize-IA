@@ -3,7 +3,7 @@ language = "Shell"
 directory = "docker"
 
 [build.command]
-command = "docker compose --env-file docker.env -f docker-compose.yaml build"
+command = "./railway-build.sh"
 
 [start]
-command = "docker compose --env-file docker.env -f docker-compose.yaml up"
+command = "./railway-start.sh"
