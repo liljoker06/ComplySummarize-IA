@@ -1,9 +1,0 @@
-[build]
-language = "Shell"
-directory = "docker"
-
-[build.command]
-command = "./railway-build.sh"
-
-[start]
-command = "./railway-start.sh"
