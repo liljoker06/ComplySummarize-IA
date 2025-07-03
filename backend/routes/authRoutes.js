@@ -7,6 +7,7 @@ const router = Router();
 router.post("/register", authController.register);
 router.post("/login", authController.login);
 router.get("/profile", authMiddleware, authController.getProfile);
+router.put("/profile", authMiddleware, authController.updateProfile);
 router.get("/validate", authMiddleware, authController.validateToken);
 router.post("/refresh", authMiddleware, authController.refreshToken);
 

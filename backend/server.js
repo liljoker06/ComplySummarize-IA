@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { sequelize } from './config/index.js';
-import { skeletonRoutes, authRoutes, fileRoutes, chatRoutes, modelRoutes } from './routes/index.js';
+import { skeletonRoutes, authRoutes, fileRoutes, chatRoutes, modelRoutes, apiKeyRoutes } from './routes/index.js';
 import modelSyncService from './services/modelSyncService.js';
 
 dotenv.config();
@@ -23,18 +23,16 @@ app.use('/api/auth', authRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/models', modelRoutes);
+app.use('/api/api-keys', apiKeyRoutes);
 
-// Database connection and sync
 const startServer = async () => {
   try {
     await sequelize.authenticate();
     console.log('✅ Database connected successfully');
     
-    // Sync models (create tables if they don't exist)
     await sequelize.sync({ force: false });
     console.log('✅ Database synchronized');
     
-    // Synchroniser les modèles IA disponibles
     console.log('🔄 Synchronisation des modèles IA...');
     await modelSyncService.syncModelsToDatabase();
     

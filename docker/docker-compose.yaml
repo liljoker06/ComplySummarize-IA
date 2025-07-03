@@ -1,35 +1,121 @@
-version: '3.8'
-
 services:
+  # Base de données MySQL
   mysql:
     image: mysql:8.0
-    container_name: mysql
+    container_name: complysummarize-mysql
     environment:
       MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: mydatabase
-      MYSQL_USER: myuser
-      MYSQL_PASSWORD: mypassword
+      MYSQL_DATABASE: complysummarize_db
+      MYSQL_USER: complysummarize_user
+      MYSQL_PASSWORD: complysummarize_pass
       MYSQL_INITDB_SKIP_TZ: 1
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./init.sql:/docker-entrypoint-initdb.d/
+    networks:
+      - complysummarize-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
+  # phpMyAdmin pour l'administration de la base de données
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
-    container_name: phpmyadmin
+    container_name: complysummarize-phpmyadmin
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
       PMA_USER: root
       PMA_PASSWORD: rootpassword
+      UPLOAD_LIMIT: 64M
     ports:
       - "8080:80"
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
+    networks:
+      - complysummarize-network
     restart: unless-stopped
 
+  # Backend Node.js avec Ollama
+  backend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.backend
+    container_name: complysummarize-backend
+    environment:
+      # Base de données
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: complysummarize_db
+      DB_USER: complysummarize_user
+      DB_PASSWORD: complysummarize_pass
+      
+      # JWT
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      
+      # Application
+      NODE_ENV: production
+      PORT: 5000
+      FRONTEND_URL: http://localhost:3000
+      
+      # Ollama
+      OLLAMA_HOST: localhost:11434
+    ports:
+      - "5000:5000"
+      - "11434:11434"
+    volumes:
+      - backend_uploads:/app/uploads
+      - ollama_data:/root/.ollama
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - complysummarize-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/auth/validate"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # Frontend React
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        VITE_API_URL: http://localhost:5000/api
+    container_name: complysummarize-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - complysummarize-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# Volumes persistants
 volumes:
   mysql_data:
+    driver: local
+  backend_uploads:
+    driver: local
+  ollama_data:
+    driver: local
+
+# Réseau pour la communication entre services
+networks:
+  complysummarize-network:
+    driver: bridge

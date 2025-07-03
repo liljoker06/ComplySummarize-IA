@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
 import { FiSend, FiUpload, FiPaperclip, FiX, FiAlertCircle } from 'react-icons/fi'
 import { PiChatCircleTextLight } from 'react-icons/pi'
-import { IoSettingsOutline } from 'react-icons/io5'
 import ModelSelector from './ModelSelector'
 import { IoChevronForward, IoSettingsOutline } from 'react-icons/io5'
 import { RxDotFilled } from 'react-icons/rx'
 import FileIndicator from './FileIndicator'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth.jsx'
+import logoComplySummarize from '../assets/logo_complysummarize.png'
 
 
 export default function Chat({ toggleSidebar, chatHook }) {
@@ -16,6 +17,7 @@ export default function Chat({ toggleSidebar, chatHook }) {
     const fileInputRef = useRef(null)
     const [isDragging, setIsDragging] = useState(false)
     const messagesEndRef = useRef(null)
+    const { user } = useAuth()
 
     const {
         currentChat,
@@ -118,6 +120,38 @@ export default function Chat({ toggleSidebar, chatHook }) {
         setSelectedModel(modelName)
     }
 
+    // Composant Avatar pour l'utilisateur
+    const UserAvatar = ({ user }) => {
+        const getInitial = () => {
+            if (user?.firstName) {
+                return user.firstName.charAt(0).toUpperCase()
+            }
+            if (user?.email) {
+                return user.email.charAt(0).toUpperCase()
+            }
+            return 'U'
+        }
+
+        return (
+            <div className="w-8 h-8 rounded-md bg-blue-600 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                {getInitial()}
+            </div>
+        )
+    }
+
+    // Composant Avatar pour le bot
+    const BotAvatar = () => {
+        return (
+            <div className="w-8 h-8 rounded-md bg-white flex items-center justify-center flex-shrink-0 border border-gray-200">
+                <img 
+                    src={logoComplySummarize} 
+                    alt="ComplySummarize" 
+                    className="w-6 h-6 object-contain"
+                />
+            </div>
+        )
+    }
+
     return (
         <>
             {isDragging && (
@@ -208,37 +242,50 @@ export default function Chat({ toggleSidebar, chatHook }) {
                                 {messages.map((msg, i) => (
                                     <div
                                         key={msg.id || i}
-                                        className={`w-fit max-w-full p-3 rounded-xl ${msg.type === 'user'
-                                            ? 'self-end bg-blue-100 dark:bg-blue-800 text-right'
-                                            : 'self-start bg-gray-200 dark:bg-gray-700'
-                                            }`}
+                                        className={`flex gap-3 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
                                     >
-                                        {/* Indicateur de fichier pour le premier message utilisateur */}
-                                        {msg.type === 'user' && i === 0 && currentChat?.file && (
-                                            <FileIndicator 
-                                                fileName={currentChat.file.originalName} 
-                                                className="mb-2"
-                                            />
-                                        )}
+                                        {/* Avatar à gauche pour le bot */}
+                                        {msg.type === 'assistant' && <BotAvatar />}
                                         
-                                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                                        <div
+                                            className={`max-w-[80%] p-3 rounded-xl ${msg.type === 'user'
+                                                ? 'bg-blue-100 dark:bg-blue-800'
+                                                : 'bg-gray-200 dark:bg-gray-700'
+                                                }`}
+                                        >
+                                            {/* Indicateur de fichier pour le premier message utilisateur */}
+                                            {msg.type === 'user' && i === 0 && currentChat?.file && (
+                                                <FileIndicator 
+                                                    fileName={currentChat.file.originalName} 
+                                                    className="mb-2"
+                                                />
+                                            )}
+                                            
+                                            <div className="whitespace-pre-wrap">{msg.content}</div>
+                                            
+                                            {msg.metadata && (
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                                    {msg.metadata.model && `Modèle: ${msg.metadata.model}`}
+                                                </div>
+                                            )}
+                                        </div>
                                         
-                                        {msg.metadata && (
-                                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                {msg.metadata.model && `Modèle: ${msg.metadata.model}`}
-                                            </div>
-                                        )}
+                                        {/* Avatar à droite pour l'utilisateur */}
+                                        {msg.type === 'user' && <UserAvatar user={user} />}
                                     </div>
                                 ))}
 
                                 {/* Typing animation */}
                                 {isTyping && (
-                                    <div className="self-start bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm px-3 py-2 rounded-xl w-fit flex items-center gap-1">
-                                        <span className="flex gap-1 ml-1">
-                                            <span className="animate-bounce [animation-delay:0ms]"><RxDotFilled size={10} /></span>
-                                            <span className="animate-bounce [animation-delay:150ms]"><RxDotFilled size={10} /></span>
-                                            <span className="animate-bounce [animation-delay:300ms]"><RxDotFilled size={10} /></span>
-                                        </span>
+                                    <div className="flex gap-3 justify-start">
+                                        <BotAvatar />
+                                        <div className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-sm px-3 py-2 rounded-xl w-fit flex items-center gap-1">
+                                            <span className="flex gap-1 ml-1">
+                                                <span className="animate-bounce [animation-delay:0ms]"><RxDotFilled size={10} /></span>
+                                                <span className="animate-bounce [animation-delay:150ms]"><RxDotFilled size={10} /></span>
+                                                <span className="animate-bounce [animation-delay:300ms]"><RxDotFilled size={10} /></span>
+                                            </span>
+                                        </div>
                                     </div>
                                 )}
                                 <div ref={messagesEndRef} />

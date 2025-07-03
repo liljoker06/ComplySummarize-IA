@@ -4,13 +4,10 @@ import { Model } from '../models/index.js';
 import { Op } from 'sequelize';
 
 class ModelController {
-    // Récupérer tous les modèles disponibles (BDD + Ollama pour comparaison)
     async getAvailableModels(req, res) {
         try {
-            // Récupérer les modèles de la base de données
             const dbModels = await modelSyncService.getAllModels();
             
-            // Récupérer les modèles Ollama pour comparaison
             const ollamaModels = await ollamaService.getAvailableModels();
 
             const response = {
@@ -73,12 +70,10 @@ class ModelController {
         }
     }
 
-    // Synchroniser les modèles avec les providers
     async syncModels(req, res) {
         try {
             await modelSyncService.syncModelsToDatabase();
             
-            // Récupérer les modèles mis à jour
             const updatedModels = await modelSyncService.getAllModels();
             
             res.json({ 
@@ -98,12 +93,10 @@ class ModelController {
         }
     }
 
-    // Vérifier si un modèle est disponible
     async checkModel(req, res) {
         try {
             const { modelName } = req.params;
             
-            // Vérifier dans la base de données
             const dbModel = await Model.findOne({ 
                 where: { name: modelName } 
             });
@@ -114,11 +107,9 @@ class ModelController {
                 });
             }
 
-            // Si c'est un modèle Ollama, vérifier sa disponibilité en temps réel
             if (dbModel.provider === 'ollama') {
                 const isAvailable = await ollamaService.isModelAvailable(modelName);
                 
-                // Mettre à jour le statut si nécessaire
                 if (dbModel.isActive !== isAvailable) {
                     await dbModel.update({ isActive: isAvailable });
                 }
@@ -138,7 +129,6 @@ class ModelController {
                 });
             }
             
-            // Pour les autres providers, utiliser le statut de la base de données
             res.json({ 
                 modelName,
                 provider: dbModel.provider,
@@ -158,7 +148,6 @@ class ModelController {
         }
     }
 
-    // Définir un modèle par défaut
     async setDefaultModel(req, res) {
         try {
             const { modelName } = req.body;
@@ -167,7 +156,6 @@ class ModelController {
                 return res.status(400).json({ error: "Le nom du modèle est requis." });
             }
 
-            // Vérifier que le modèle existe et est actif
             const model = await Model.findOne({ 
                 where: { 
                     name: modelName,
@@ -181,13 +169,11 @@ class ModelController {
                 });
             }
 
-            // Désactiver tous les modèles par défaut actuels
             await Model.update(
                 { isDefault: false },
                 { where: { isDefault: true } }
             );
-
-            // Définir le nouveau modèle par défaut
+            
             await model.update({ isDefault: true });
 
             res.json({ 
@@ -206,7 +192,6 @@ class ModelController {
         }
     }
 
-    // Récupérer le modèle par défaut
     async getDefaultModel(req, res) {
         try {
             const defaultModel = await Model.findOne({ 
