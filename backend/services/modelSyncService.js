@@ -1,6 +1,7 @@
 import { OpenAI } from 'openai';
 import { Mistral } from '@mistralai/mistralai';
 import ollamaService from './ollamaService.js';
+import apiKeyService from './apiKeyService.js';
 import { Model } from '../models/index.js';
 import dotenv from 'dotenv';
 
@@ -8,13 +9,8 @@ dotenv.config();
 
 class ModelSyncService {
     constructor() {
-        this.openai = process.env.OPENAI_API_KEY ? new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-        }) : null;
-        
-        this.mistral = process.env.MISTRAL_API_KEY ? new Mistral({
-            apiKey: process.env.MISTRAL_API_KEY,
-        }) : null;
+        this.openai = null;
+        this.mistral = null;
 
         this.expectedModels = {
             mistral: [
@@ -49,8 +45,31 @@ class ModelSyncService {
         };
     }
 
-    async checkMistralAvailability() {
+    async getMistralClient() {
         if (!this.mistral) {
+            const apiKey = await apiKeyService.getApiKey('mistral');
+            if (!apiKey) {
+                return null;
+            }
+            this.mistral = new Mistral({ apiKey });
+        }
+        return this.mistral;
+    }
+
+    async getOpenAIClient() {
+        if (!this.openai) {
+            const apiKey = await apiKeyService.getApiKey('openai');
+            if (!apiKey) {
+                return null;
+            }
+            this.openai = new OpenAI({ apiKey });
+        }
+        return this.openai;
+    }
+
+    async checkMistralAvailability() {
+        const mistralClient = await this.getMistralClient();
+        if (!mistralClient) {
             console.log('Clé API Mistral non configurée');
             return [];
         }
@@ -59,7 +78,7 @@ class ModelSyncService {
         
         for (const model of this.expectedModels.mistral) {
             try {
-                await this.mistral.chat.complete({
+                await mistralClient.chat.complete({
                     model: model.name,
                     messages: [{ role: 'user', content: 'test' }],
                     max_tokens: 1
@@ -75,7 +94,8 @@ class ModelSyncService {
     }
 
     async checkOpenAIAvailability() {
-        if (!this.openai) {
+        const openaiClient = await this.getOpenAIClient();
+        if (!openaiClient) {
             console.log('Clé API OpenAI non configurée');
             return [];
         }
@@ -84,7 +104,7 @@ class ModelSyncService {
         
         for (const model of this.expectedModels.openai) {
             try {
-                const models = await this.openai.models.list();
+                const models = await openaiClient.models.list();
                 const modelExists = models.data.some(m => m.id === model.name);
                 
                 if (modelExists) {

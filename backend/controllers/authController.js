@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User } from '../models/index.js';
+import { Op } from 'sequelize';
 
 class AuthController {
 
@@ -199,6 +200,64 @@ class AuthController {
             console.error('Erreur rafraîchissement token:', error);
             res.status(500).json({ 
                 error: 'Erreur serveur lors du rafraîchissement du token',
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            });
+        }
+    }
+
+    async updateProfile(req, res) {
+        try {
+            const { firstName, lastName, email } = req.body;
+            const userId = req.user.userId;
+
+            // Validation des données
+            if (!firstName || !lastName || !email) {
+                return res.status(400).json({ error: 'Prénom, nom et email sont requis' });
+            }
+
+            // Vérifier si l'email est déjà utilisé par un autre utilisateur
+            if (email !== req.user.email) {
+                const existingUser = await User.findOne({ 
+                    where: { 
+                        email: email,
+                        id: { [Op.ne]: userId } // Exclure l'utilisateur actuel
+                    } 
+                });
+                
+                if (existingUser) {
+                    return res.status(409).json({ error: 'Cet email est déjà utilisé par un autre utilisateur' });
+                }
+            }
+
+            // Mettre à jour l'utilisateur
+            const user = await User.findByPk(userId);
+            if (!user) {
+                return res.status(404).json({ error: 'Utilisateur non trouvé' });
+            }
+
+            await user.update({
+                firstName: firstName.trim(),
+                lastName: lastName.trim(),
+                email: email.trim().toLowerCase()
+            });
+
+            // Retourner les données mises à jour (sans le mot de passe)
+            const updatedUser = await User.findByPk(userId, {
+                attributes: { 
+                    exclude: ['password'],
+                    include: ['createdAt', 'updatedAt', 'lastLoginAt'] 
+                }
+            });
+
+            res.json({
+                success: true,
+                message: 'Profil mis à jour avec succès',
+                user: updatedUser
+            });
+        } catch (error) {
+            console.error('Erreur mise à jour profil:', error);
+            res.status(500).json({ 
+                error: 'Erreur serveur lors de la mise à jour du profil',
                 details: process.env.NODE_ENV === 'development' ? error.message : undefined
             });
         }

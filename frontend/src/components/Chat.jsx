@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { FiSend, FiUpload, FiPaperclip, FiX, FiAlertCircle } from 'react-icons/fi'
 import { PiChatCircleTextLight } from 'react-icons/pi'
-import { IoSettingsOutline } from 'react-icons/io5'
 import ModelSelector from './ModelSelector'
 import { IoChevronForward, IoSettingsOutline } from 'react-icons/io5'
 import { RxDotFilled } from 'react-icons/rx'

@@ -5,6 +5,7 @@ import { Chat, File, Message, Model } from '../models/index.js';
 import ollamaService from '../services/ollamaService.js';
 import systemPromptService from '../services/systemPromptService.js';
 import piiService from '../services/piiService.js';
+import apiKeyService from '../services/apiKeyService.js';
 import { OpenAI } from 'openai';
 import { Mistral } from '@mistralai/mistralai';
 import dotenv from 'dotenv';
@@ -13,12 +14,31 @@ dotenv.config();
 
 class FileController {
     constructor() {
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-        });
-        this.mistral = new Mistral({
-            apiKey: process.env.MISTRAL_API_KEY,
-        });
+        // Les clients seront initialisés dynamiquement avec les clés de la BDD
+        this.openai = null;
+        this.mistral = null;
+    }
+
+    async getOpenAIClient() {
+        if (!this.openai) {
+            const apiKey = await apiKeyService.getApiKey('openai');
+            if (!apiKey) {
+                throw new Error('Clé API OpenAI non configurée');
+            }
+            this.openai = new OpenAI({ apiKey });
+        }
+        return this.openai;
+    }
+
+    async getMistralClient() {
+        if (!this.mistral) {
+            const apiKey = await apiKeyService.getApiKey('mistral');
+            if (!apiKey) {
+                throw new Error('Clé API Mistral non configurée');
+            }
+            this.mistral = new Mistral({ apiKey });
+        }
+        return this.mistral;
     }
 
     // Méthode pour convertir un objet en texte lisible
@@ -299,7 +319,7 @@ Génère un JSON structuré :
             if (!messageContent || messageContent.trim() === '') {
                 throw new Error('Le contenu de la réponse généré est vide');
             }
-
+            
             await Message.create({
                 chatId: chat.id,
                 modelId: model.id,
@@ -331,7 +351,8 @@ Génère un JSON structuré :
                     return await ollamaService.chatWithJsonResponse(model.name, messages);
 
                 case "openai":
-                    completion = await this.openai.chat.completions.create({
+                    const openaiClient = await this.getOpenAIClient();
+                    completion = await openaiClient.chat.completions.create({
                         model: model.name,
                         messages: [
                             { role: "system", content: systemPrompt },
@@ -342,7 +363,8 @@ Génère un JSON structuré :
                     break;
 
                 case "mistral":
-                    completion = await this.mistral.chat.complete({
+                    const mistralClient = await this.getMistralClient();
+                    completion = await mistralClient.chat.complete({
                         model: model.name,
                         messages: [
                             { role: "system", content: systemPrompt },
@@ -395,7 +417,7 @@ Génère un JSON structuré :
                     error: e.message,
                     raw: rawContent
                 };
-            }
+        }
 
         } catch (error) {
             console.error('Erreur lors de l\'appel au LLM:', error);

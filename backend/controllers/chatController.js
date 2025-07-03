@@ -1,6 +1,7 @@
 import { Chat, Message, File, Model } from '../models/index.js';
 import ollamaService from '../services/ollamaService.js';
 import systemPromptService from '../services/systemPromptService.js';
+import apiKeyService from '../services/apiKeyService.js';
 import { OpenAI } from 'openai';
 import { Mistral } from '@mistralai/mistralai';
 import dotenv from 'dotenv';
@@ -9,13 +10,31 @@ dotenv.config();
 
 class ChatController {
     constructor() {
-        // Initialiser les clients API pour les providers externes
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY,
-        });
-        this.mistral = new Mistral({
-            apiKey: process.env.MISTRAL_API_KEY,
-        });
+        // Les clients seront initialisés dynamiquement avec les clés de la BDD
+        this.openai = null;
+        this.mistral = null;
+    }
+
+    async getOpenAIClient() {
+        if (!this.openai) {
+            const apiKey = await apiKeyService.getApiKey('openai');
+            if (!apiKey) {
+                throw new Error('Clé API OpenAI non configurée');
+            }
+            this.openai = new OpenAI({ apiKey });
+        }
+        return this.openai;
+    }
+
+    async getMistralClient() {
+        if (!this.mistral) {
+            const apiKey = await apiKeyService.getApiKey('mistral');
+            if (!apiKey) {
+                throw new Error('Clé API Mistral non configurée');
+            }
+            this.mistral = new Mistral({ apiKey });
+        }
+        return this.mistral;
     }
 
     async sendMessageToLLM(messages, model) {
@@ -34,7 +53,8 @@ class ChatController {
                     };
 
                 case "openai":
-                    completion = await this.openai.chat.completions.create({
+                    const openaiClient = await this.getOpenAIClient();
+                    completion = await openaiClient.chat.completions.create({
                         model: model.name,
                         messages: messages,
                         ...model.configuration
@@ -47,7 +67,8 @@ class ChatController {
                     };
 
                 case "mistral":
-                    completion = await this.mistral.chat.complete({
+                    const mistralClient = await this.getMistralClient();
+                    completion = await mistralClient.chat.complete({
                         model: model.name,
                         messages: messages
                     });

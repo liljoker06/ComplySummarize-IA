@@ -1,0 +1,36 @@
+# Dockerfile pour le frontend React/Vite
+FROM node:18-alpine AS builder
+
+# Définir le répertoire de travail
+WORKDIR /app
+
+# Copier les fichiers de dépendances
+COPY frontend/package*.json ./
+
+# Installer les dépendances avec npm install pour éviter les problèmes de dépendances optionnelles
+RUN npm install
+
+# Copier le code source
+COPY frontend/ .
+
+# Variables d'environnement pour le build
+ARG VITE_API_URL=http://localhost:5000/api
+ENV VITE_API_URL=$VITE_API_URL
+
+# Build de l'application
+RUN npm run build
+
+# Stage de production avec Nginx
+FROM nginx:alpine
+
+# Copier la configuration Nginx personnalisée
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+
+# Copier les fichiers buildés depuis l'étape builder
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Exposer le port 80
+EXPOSE 80
+
+# Démarrer Nginx
+CMD ["nginx", "-g", "daemon off;"] 

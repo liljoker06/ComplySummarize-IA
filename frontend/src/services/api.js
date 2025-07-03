@@ -170,6 +170,46 @@ class ApiService {
             method: 'POST',
         });
     }
+
+    async getUserProfile() {
+        return this.request('/auth/profile');
+    }
+
+    async updateProfile(profileData) {
+        return this.request('/auth/profile', {
+            method: 'PUT',
+            body: JSON.stringify(profileData),
+        });
+    }
+
+    // API Keys methods
+    async getAllApiKeys() {
+        return this.request('/api-keys');
+    }
+
+    async saveApiKey(provider, apiKey) {
+        return this.request('/api-keys', {
+            method: 'POST',
+            body: JSON.stringify({ provider, apiKey }),
+        });
+    }
+
+    async deleteApiKey(provider) {
+        return this.request(`/api-keys/${provider}`, {
+            method: 'DELETE',
+        });
+    }
+
+    async toggleApiKey(provider, isActive) {
+        return this.request(`/api-keys/${provider}/toggle`, {
+            method: 'PATCH',
+            body: JSON.stringify({ isActive }),
+        });
+    }
+
+    async testApiKey(provider) {
+        return this.request(`/api-keys/${provider}/test`);
+    }
 }
 
 export default new ApiService(); 

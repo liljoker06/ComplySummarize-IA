@@ -1,0 +1,100 @@
+# Dockerfile pour le backend Node.js avec Ollama
+FROM node:18-slim AS base
+
+# Installer les dépendances nécessaires
+RUN apt-get update && apt-get install -y \
+    curl \
+    bash \
+    && rm -rf /var/lib/apt/lists/*
+
+# Définir le répertoire de travail
+WORKDIR /app
+
+# Copier les fichiers de dépendances
+COPY backend/package*.json ./
+
+# Installer les dépendances Node.js
+RUN npm ci --only=production
+
+# Copier le code source du backend
+COPY backend/ .
+
+# Créer le répertoire uploads
+RUN mkdir -p uploads
+
+# Exposer le port du backend
+EXPOSE 5000
+
+# Stage pour installer Ollama
+FROM base AS ollama-installer
+
+# Installer Ollama avec le script officiel
+RUN curl -fsSL https://ollama.ai/install.sh | sh
+
+# Stage final
+FROM ollama-installer AS final
+
+# Créer un script de démarrage principal
+RUN echo '#!/bin/bash' > /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Fonction pour gérer l'"'"'arrêt propre' >> /app/start.sh && \
+    echo 'cleanup() {' >> /app/start.sh && \
+    echo '    echo "Arrêt des services..."' >> /app/start.sh && \
+    echo '    kill $OLLAMA_PID $NODE_PID 2>/dev/null' >> /app/start.sh && \
+    echo '    wait' >> /app/start.sh && \
+    echo '    exit 0' >> /app/start.sh && \
+    echo '}' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Capturer les signaux d'"'"'arrêt' >> /app/start.sh && \
+    echo 'trap cleanup SIGTERM SIGINT' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Démarrer Ollama en arrière-plan' >> /app/start.sh && \
+    echo 'echo "Démarrage d'"'"'Ollama..."' >> /app/start.sh && \
+    echo 'ollama serve &' >> /app/start.sh && \
+    echo 'OLLAMA_PID=$!' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Attendre que Ollama soit prêt' >> /app/start.sh && \
+    echo 'echo "Attente du démarrage d'"'"'Ollama..."' >> /app/start.sh && \
+    echo 'while ! curl -s http://localhost:11434/api/tags > /dev/null; do' >> /app/start.sh && \
+    echo '    sleep 2' >> /app/start.sh && \
+    echo 'done' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Vérifier si les modèles sont déjà installés, sinon les télécharger' >> /app/start.sh && \
+    echo 'echo "Vérification des modèles..."' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Fonction pour vérifier et télécharger un modèle' >> /app/start.sh && \
+    echo 'check_and_pull_model() {' >> /app/start.sh && \
+    echo '    local model=$1' >> /app/start.sh && \
+    echo '    if ! ollama list | grep -q "$model"; then' >> /app/start.sh && \
+    echo '        echo "Téléchargement de $model..."' >> /app/start.sh && \
+    echo '        ollama pull $model' >> /app/start.sh && \
+    echo '    else' >> /app/start.sh && \
+    echo '        echo "Modèle $model déjà présent."' >> /app/start.sh && \
+    echo '    fi' >> /app/start.sh && \
+    echo '}' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo 'check_and_pull_model "gemma2:2b"' >> /app/start.sh && \
+    echo 'check_and_pull_model "llama3.2:1b"' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo 'echo "Ollama est prêt avec tous les modèles!"' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Démarrer l'"'"'application Node.js' >> /app/start.sh && \
+    echo 'echo "Démarrage de l'"'"'application Node.js..."' >> /app/start.sh && \
+    echo 'npm start &' >> /app/start.sh && \
+    echo 'NODE_PID=$!' >> /app/start.sh && \
+    echo '' >> /app/start.sh && \
+    echo '# Attendre que l'"'"'un des processus se termine' >> /app/start.sh && \
+    echo 'wait' >> /app/start.sh
+
+# Rendre le script exécutable
+RUN chmod +x /app/start.sh
+
+# Variables d'environnement
+ENV NODE_ENV=production
+ENV OLLAMA_HOST=0.0.0.0:11434
+
+# Exposer les ports (Node.js et Ollama)
+EXPOSE 5000 11434
+
+# Démarrer avec le script principal
+CMD ["/app/start.sh"] 
